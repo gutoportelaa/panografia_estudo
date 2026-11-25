@@ -265,7 +265,7 @@ relatório interativo refaz essa tabela para qualquer par.
 
 | Situação | O que acontece | Exemplo no site |
 |---|---|---|
-| A câmera gira ou muda de ponto de vista | Objetos perto e longe se deslocam de formas diferentes (paralaxe); nenhum $\mathbf{t}$ serve para todos, e o mosaico mostra contornos duplicados. O modelo adequado é uma homografia (Szeliski §8.2) | Pôster, Praça, Times Square |
+| A câmera gira ou muda de ponto de vista | Objetos perto e longe se deslocam de formas diferentes (paralaxe); nenhum $\mathbf{t}$ serve para todos, e o mosaico mostra contornos duplicados. O modelo adequado é uma homografia (Szeliski §8.2) | Pôster, Praça, Times Square, Pessoa no laboratório |
 | Padrão repetitivo | Casas iguais têm descritores iguais; sobram poucos pares, e o voto vencedor pode estar errado por uma casa inteira | Tabuleiro |
 | Pouca sobreposição | Os votos só vêm da faixa em comum; com menos de uns 20% de sobreposição, o aglomerado fica ralo | Par sintético com tx grande |
 
@@ -275,6 +275,7 @@ relatório interativo refaz essa tabela para qualquer par.
 |---|---|---|
 | Paisagem | par fornecido na Atividade 03 da disciplina | uso acadêmico |
 | Capa de livro, pôster, tabuleiro | câmera do Rover, LabVIP/UFPI | as do autor |
+| Pessoa no laboratório | fotos de João, publicadas com autorização | não reutilizar sem autorização |
 | Sequência aérea, escola e praça vistas do drone; prédio entre árvores, fachada, praça, rua e Times Square | [Aerial234](https://huggingface.co/datasets/RussRobin/Aerial234) e [StitchBench](https://huggingface.co/datasets/RussRobin/StitchBench), por RussRobin | CC BY 4.0 |
 
 Os pares escolhidos já estão em `web/samples/`, reduzidos para 960 px. Para refazer a escolha

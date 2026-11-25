@@ -110,6 +110,16 @@
     "note": "A câmera aponta para cima e gira entre as fotos, então as bordas dos prédios convergem de forma diferente em cada uma. Isso é uma homografia, não uma translação: 31% dos pares concordam com t ≈ (−15; 107) px, e as torres aparecem dobradas."
   },
   {
+    "id": "joao",
+    "title": "Pessoa no laboratório",
+    "tag": "limite: profundidades",
+    "kind": "warn",
+    "img1": "samples/joao_1.jpg",
+    "img2": "samples/joao_2.jpg",
+    "credit": "fotos de João, publicadas com autorização",
+    "note": "Duas fotos tiradas com o celular na mão, de frente para uma pessoa sentada. A pessoa, a mesa e a parede estão a distâncias diferentes da câmera, e cada uma pede um t um pouco diferente: os votos formam uma faixa de uns 15 px, não um ponto, e só 27% caem a menos de ε = 3 px do vencedor, t ≈ (128; −1) px. O rosto alinha, mas as bordas do monitor e do quadro branco aparecem duplicadas no mosaico."
+  },
+  {
     "id": "rover_tabuleiro",
     "title": "Tabuleiro",
     "tag": "falha: padrão repetido",
