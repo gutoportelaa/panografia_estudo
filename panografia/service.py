@@ -61,7 +61,10 @@ def run(data1: bytes, data2: bytes, options: dict[str, Any] | None = None, quali
         detector=o["detector"], blend=o["blend"], ratio=ratio, mutual=bool(o["mutual"]),
         ransac_threshold=eps, max_points=max(100, min(int(o["max_points"]), 10000)), seed=int(o["seed"]),
     )
-    result = stitch(a, b, params)  # pode lançar StitchError
+    figures = o.get("figuras")
+    if isinstance(figures, str):
+        figures = [f for f in figures.split(",") if f] or None
+    result = stitch(a, b, params, figures)  # pode lançar StitchError
 
     summary = result.summary()
     summary["scale"] = scale

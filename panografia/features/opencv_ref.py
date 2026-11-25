@@ -31,4 +31,9 @@ def detect_opencv_sift(image: np.ndarray, max_points: int = 4000) -> Features:
 def detect_opencv_orb(image: np.ndarray, max_points: int = 4000) -> Features:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
     kps, desc = cv2.ORB_create(nfeatures=max_points).detectAndCompute(gray, None)
-    return _to_features(kps, desc, True, 32)
+    feats = _to_features(kps, desc, True, 32)
+    # O "size" do ORB é a janela de 31 px do BRIEF, não a escala do ponto. Para as
+    # figuras ficarem comparáveis às do SIFT, usa-se a escala do nível da pirâmide.
+    if len(kps):
+        feats.scales = np.array([1.6 * 1.2 ** kp.octave for kp in kps], np.float32)
+    return feats

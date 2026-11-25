@@ -71,8 +71,20 @@ class StitchError(RuntimeError):
     """Falha ao alinhar as imagens (poucas correspondências, por exemplo)."""
 
 
-def stitch(img1: np.ndarray, img2: np.ndarray, params: StitchParams | None = None) -> StitchResult:
+FIGURES = ("mosaico", "justaposicao", "correspondencias", "contornos",
+           "pontos1", "pontos2", "escala", "pesos")
+
+
+def stitch(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    params: StitchParams | None = None,
+    figures: tuple[str, ...] | list[str] | None = None,
+) -> StitchResult:
     """Alinha ``img2`` à ``img1`` por translação e gera o mosaico.
+
+    ``figures`` limita as figuras desenhadas (``None`` desenha todas); a
+    comparação entre detectores, por exemplo, só precisa dos pontos.
 
     As imagens são arrays BGR ``uint8`` (como lidas por ``cv2.imread``).
     A translação t retornada leva coordenadas da imagem 2 para o quadro da
@@ -111,16 +123,18 @@ def stitch(img1: np.ndarray, img2: np.ndarray, params: StitchParams | None = Non
     mosaic, canvas, _, alpha = composite(img1, img2, est.t, p.blend, return_alpha=True)
     tick("composicao", t0)
 
-    images = {
-        "mosaico": mosaic,
-        "justaposicao": side_by_side(img1, img2),
-        "correspondencias": draw_matches(img1, img2, pts1, pts2, est.inliers),
-        "contornos": overlap_outline(mosaic, canvas, img1.shape, img2.shape),
-        "pontos1": draw_keypoints(img1, f1.points, f1.scales),
-        "pontos2": draw_keypoints(img2, f2.points, f2.scales),
-        "escala": scale_space_figure(img1),
-        "pesos": weights_figure(alpha),
+    draw = {
+        "mosaico": lambda: mosaic,
+        "justaposicao": lambda: side_by_side(img1, img2),
+        "correspondencias": lambda: draw_matches(img1, img2, pts1, pts2, est.inliers),
+        "contornos": lambda: overlap_outline(mosaic, canvas, img1.shape, img2.shape),
+        "pontos1": lambda: draw_keypoints(img1, f1.points, f1.scales),
+        "pontos2": lambda: draw_keypoints(img2, f2.points, f2.scales),
+        "escala": lambda: scale_space_figure(img1),
+        "pesos": lambda: weights_figure(alpha),
     }
+    wanted = FIGURES if figures is None else [f for f in figures if f in draw]
+    images = {name: draw[name]() for name in wanted}
     timings["total"] = round(sum(timings.values()), 1)
     return StitchResult(
         params=p,

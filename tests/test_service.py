@@ -24,6 +24,14 @@ def test_service_run_returns_jpegs():
     assert all(v[:2] == b"\xff\xd8" for v in images.values())  # cabeçalho JPEG
 
 
+def test_service_renders_only_requested_figures():
+    """A comparação entre detectores pede só os pontos, para não pagar pelas outras figuras."""
+    summary, images = service.run(_bytes("img1.png"), _bytes("img2.png"),
+                                  {"detector": "opencv-orb", "figuras": "pontos1,inexistente"})
+    assert set(images) == {"pontos1"}
+    assert summary["n_inliers"] > 50
+
+
 def test_service_downscales_large_inputs_consistently():
     summary, _ = service.run(_bytes("img1.png"), _bytes("img2.png"), {"max_side": 320})
     assert summary["scale"] == pytest.approx(0.5)

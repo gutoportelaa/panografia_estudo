@@ -117,6 +117,6 @@
     "img1": "samples/rover_tabuleiro_1.jpg",
     "img2": "samples/rover_tabuleiro_2.jpg",
     "credit": "capturas da câmera do Rover, LabVIP/UFPI",
-    "note": "Todas as casas do tabuleiro são iguais, então o descritor de uma casa combina com várias outras. Sobram poucos pares, e o voto vencedor pode estar errado por uma casa inteira. Troque entre SIFT e Harris e compare os resultados."
+    "note": "Todas as casas do tabuleiro são iguais, então o descritor de uma casa combina com várias outras. Sobram poucos pares, e o voto vencedor pode cair no aglomerado errado. Veja a §6: três detectores concordam, e o SIFT próprio fica cerca de 58 px longe deles."
   }
 ]

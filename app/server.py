@@ -46,12 +46,14 @@ def stitch_endpoint(
     max_points: int = Form(4000),
     max_side: int = Form(service.DEFAULT_MAX_SIDE),
     seed: int = Form(0),
+    figuras: str = Form(""),
 ):
     data1, data2 = img1.file.read(), img2.file.read()
     if max(len(data1), len(data2)) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"arquivo maior que {MAX_UPLOAD_BYTES // 2**20} MB")
     options = dict(detector=detector, blend=blend, ratio=ratio, mutual=mutual,
-                   ransac_threshold=ransac_threshold, max_points=max_points, max_side=max_side, seed=seed)
+                   ransac_threshold=ransac_threshold, max_points=max_points, max_side=max_side, seed=seed,
+                   figuras=figuras)
     try:
         summary, images = service.run(data1, data2, options)
     except service.InputError as exc:

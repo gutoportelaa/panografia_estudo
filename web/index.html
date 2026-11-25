@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Panografia</title>
+  <title>Panografia · Atividade 03</title>
   <meta name="description" content="Costura de duas fotos por translação, com cada etapa mostrada nas próprias imagens: SIFT, teste NNDR, votos do RANSAC e feathering.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,67 +12,81 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f1b16' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Cpath d='M12 2v20M2 12h20'/%3E%3C/svg%3E">
 </head>
 <body>
-  <!-- Marca de registro: o sinal que gráficas usam para alinhar camadas. -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <symbol id="reg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="12" cy="12" r="6"/><path d="M12 2v20M2 12h20"/>
-    </symbol>
-  </svg>
-
-  <header class="topbar">
-    <div class="wrap">
-      <a class="brand" href="#"><svg aria-hidden="true"><use href="#reg"/></svg>Panografia</a>
-      <nav class="nav" aria-label="Seções">
-        <a href="#passo-a-passo" class="hide-sm">Passo a passo</a>
-        <a href="#limites" class="hide-sm">Limites</a>
-        <a href="https://github.com/gutoportelaa/panografia_estudo">Código</a>
-        <span class="engine" id="engine">iniciando</span>
-      </nav>
-    </div>
+  <header class="doc wrap">
+    <p class="kicker">Atividade 03 · relatório</p>
+    <h1>Panografia: costura de imagens transladadas</h1>
+    <p class="abstract"><b>Resumo.</b> Duas imagens com sobreposição parcial são alinhadas por uma translação
+      t = (tx, ty) e mescladas num mosaico. Os pontos de interesse são detectados (SIFT, Harris, ORB), casados
+      pelo teste de razão de Lowe e usados como votos num RANSAC de uma amostra; a região comum é mesclada por
+      feathering. O código Python é executado nesta própria página, então todas as figuras e números abaixo
+      são calculados na hora, a partir das imagens de entrada, e podem ser refeitos com outras imagens.</p>
+    <p class="docmeta">Execução: <span class="engine" id="engine">iniciando</span>
+      · Código-fonte e instruções: <a href="https://github.com/gutoportelaa/panografia_estudo">github.com/gutoportelaa/panografia_estudo</a></p>
+    <nav class="toc" aria-label="Sumário">
+      <ol>
+        <li><a href="#objetivo">Objetivo e saídas pedidas</a></li>
+        <li><a href="#entrada">Imagens de entrada</a></li>
+        <li><a href="#parametros">Parâmetros</a></li>
+        <li><a href="#resultados">Resultados</a></li>
+        <li><a href="#passo-a-passo">Método, etapa por etapa</a></li>
+        <li><a href="#detectores">Comparação entre detectores</a></li>
+        <li><a href="#limites">Limitações do modelo de translação</a></li>
+        <li class="ref"><a href="#referencias">Referências</a></li>
+      </ol>
+    </nav>
   </header>
 
   <main>
-    <section class="wrap intro">
-      <div>
-        <h1>Costure duas fotos achando o deslocamento entre elas</h1>
-        <p class="lede">Pontos marcantes das duas imagens são detectados e comparados. Cada par parecido
-          vota num deslocamento t = (tx, ty), o RANSAC fica com o voto da maioria e as fotos são mescladas.
-          Cada etapa aparece aqui, desenhada sobre as suas imagens.</p>
-        <div class="actions">
-          <button type="button" class="btn primary" id="btn-demo" disabled>Rodar com a paisagem da atividade</button>
-          <a class="textlink" href="#passo-a-passo">Como funciona</a>
-        </div>
+    <section class="section" id="objetivo" aria-labelledby="t-obj">
+      <div class="wrap">
+        <div class="section-head"><span class="step">1</span><h2 id="t-obj">Objetivo e saídas pedidas</h2></div>
+        <p class="section-intro">Implementar uma panografia simples: alinhar duas imagens parcialmente sobrepostas
+          usando apenas o modelo de translação e combiná-las num mosaico contínuo. A tabela indica onde cada
+          item do enunciado aparece neste relatório.</p>
+        <table class="table">
+          <thead><tr><th>Pedido no enunciado</th><th>Onde está</th></tr></thead>
+          <tbody>
+            <tr><td>Detectar características (SIFT, ORB, Harris…)</td><td>§5, etapas 01 e 02; os quatro detectores comparados em §6</td></tr>
+            <tr><td>Encontrar correspondências</td><td>§5, etapa 03 (teste de razão NNDR e checagem mútua)</td></tr>
+            <tr><td>Estimar a translação com RANSAC</td><td>§5, etapa 04 (nuvem de votos)</td></tr>
+            <tr><td>Imprimir t = (tx, ty) e o número de inliers</td><td>§4, quadro ao lado do mosaico</td></tr>
+            <tr><td>Transladar a imagem 2 e gerar o mosaico (média ou blending linear)</td><td>§4 (mosaico.jpg para baixar) e §5, etapa 05</td></tr>
+            <tr><td>Comparar o mosaico com a justaposição direta</td><td>§4, uma figura abaixo da outra</td></tr>
+          </tbody>
+        </table>
       </div>
-      <figure class="plate">
-        <img src="assets/capa.jpg" width="1002" height="557" alt="Mosaico da paisagem da atividade com os quadros das duas fotos marcados">
-        <figcaption>
-          <span>t = <b>(361,9; −0,4) px</b></span>
-          <span><b>297</b> inliers de 305 correspondências</span>
-          <span>erro RMS <b>0,54 px</b></span>
-        </figcaption>
-      </figure>
     </section>
 
-    <section class="section" aria-labelledby="t-entrada">
+    <section class="section" id="entrada" aria-labelledby="t-entrada">
       <div class="wrap">
-        <div class="section-head"><span class="step">1</span><h2 id="t-entrada">Escolha as imagens</h2></div>
-        <p class="section-intro">Use um exemplo, envie duas fotos suas com uma faixa em comum ou gere um par
-          sintético a partir de qualquer imagem, com deslocamento conhecido para conferir a resposta.</p>
-        <div class="gallery" id="gallery" role="list"></div>
-        <p class="note" id="sample-note" hidden></p>
+        <div class="section-head"><span class="step">2</span><h2 id="t-entrada">Imagens de entrada</h2></div>
+        <p class="section-intro">Por padrão, o par fornecido na atividade. Para usar as suas imagens, clique em
+          um dos quadros ou arraste um arquivo para ele; as duas fotos precisam ter uma faixa em comum.</p>
 
         <div class="inputs">
-          <label class="drop" data-slot="img1">
-            <input type="file" accept="image/*" hidden>
-            <img alt="" hidden>
-            <span class="drop-hint"><b>Imagem 1</b>fica parada, define o quadro de referência</span>
-          </label>
-          <label class="drop" data-slot="img2">
-            <input type="file" accept="image/*" hidden>
-            <img alt="" hidden>
-            <span class="drop-hint"><b>Imagem 2</b>é deslocada por t até encaixar na 1</span>
-          </label>
+          <div class="slot">
+            <label class="drop" data-slot="img1">
+              <input type="file" accept="image/*" hidden>
+              <img alt="" hidden>
+              <span class="drop-hint"><b>Imagem 1</b>clique ou arraste um arquivo</span>
+            </label>
+            <p class="slot-cap"><b>Imagem 1</b>, referência: fica parada <span class="fname" data-fname="img1"></span></p>
+          </div>
+          <div class="slot">
+            <label class="drop" data-slot="img2">
+              <input type="file" accept="image/*" hidden>
+              <img alt="" hidden>
+              <span class="drop-hint"><b>Imagem 2</b>clique ou arraste um arquivo</span>
+            </label>
+            <p class="slot-cap"><b>Imagem 2</b>, deslocada por t até encaixar na 1 <span class="fname" data-fname="img2"></span></p>
+          </div>
         </div>
+        <p class="note" id="sample-note" hidden></p>
+
+        <h3 class="sub">Outros pares de teste</h3>
+        <p class="sub-intro">Pares escolhidos para mostrar onde a translação funciona (verde), onde ela só se
+          aproxima do movimento real (laranja) e onde falha (vermelho). Um clique carrega o par nos quadros acima.</p>
+        <div class="gallery" id="gallery" role="list"></div>
 
         <details class="synth">
           <summary>Par sintético com gabarito</summary>
@@ -90,9 +104,9 @@
       </div>
     </section>
 
-    <section class="section" aria-labelledby="t-param">
+    <section class="section" id="parametros" aria-labelledby="t-param">
       <div class="wrap">
-        <div class="section-head"><span class="step">2</span><h2 id="t-param">Ajuste o método</h2></div>
+        <div class="section-head"><span class="step">3</span><h2 id="t-param">Parâmetros</h2></div>
         <form id="form" class="params">
           <label class="field">Detector de pontos
             <select name="detector" disabled></select>
@@ -117,7 +131,7 @@
 
     <section class="section" id="resultados" hidden aria-labelledby="t-res">
       <div class="wrap">
-        <div class="section-head"><span class="step">3</span><h2 id="t-res">Resultado</h2></div>
+        <div class="section-head"><span class="step">4</span><h2 id="t-res">Resultados</h2></div>
         <div class="result">
           <div class="figures">
             <figure class="figure">
@@ -136,9 +150,9 @@
 
     <section class="section" id="passo-a-passo" aria-labelledby="t-walk">
       <div class="wrap">
-        <div class="section-head"><span class="step">4</span><h2 id="t-walk">Passo a passo</h2></div>
-        <p class="section-intro">O que o programa fez com as imagens acima, na ordem em que fez. As figuras e os
-          números vêm da última execução.</p>
+        <div class="section-head"><span class="step">5</span><h2 id="t-walk">Método, etapa por etapa</h2></div>
+        <p class="section-intro">O que o programa fez com as imagens de entrada, na ordem em que fez. As figuras e
+          os números vêm da última execução; as equações seguem Szeliski [1], caps. 7 e 8.</p>
 
         <div class="walk">
           <article class="walk-step">
@@ -146,7 +160,7 @@
               <span class="n">01</span>
               <h3>Ver a imagem em várias escalas</h3>
               <p>Um canto ou uma mancha só é "o mesmo ponto" nas duas fotos se for achado no mesmo tamanho.
-                Por isso o SIFT borra a imagem com gaussianas cada vez mais largas e subtrai níveis vizinhos.
+                Por isso o SIFT [2] borra a imagem com gaussianas cada vez mais largas e subtrai níveis vizinhos.
                 A diferença de gaussianas (DoG) acende onde há uma estrutura daquele tamanho.</p>
               <div class="formula">L(x, y, σ) = G(x, y, σ) ∗ I(x, y)
 D(x, y, σ) = L(x, y, kσ) − L(x, y, σ),  k = 2^(1/3)</div>
@@ -166,8 +180,9 @@ D(x, y, σ) = L(x, y, kσ) − L(x, y, σ),  k = 2^(1/3)</div>
                 pontos de pouco contraste ou sobre bordas retas são descartados, porque deslizam ao longo da
                 borda.</p>
               <p>Cada ponto ganha uma <b>orientação dominante</b> e um <b>descritor</b> de 128 números: 16
-                histogramas de 8 direções de gradiente numa janela 4×4 ao redor dele. Com o Harris, o descritor
-                é o próprio recorte 8×8 da imagem, normalizado em brilho e contraste.</p>
+                histogramas de 8 direções de gradiente numa janela 4×4 ao redor dele. Com o Harris [3], o descritor
+                é o próprio recorte 8×8 da imagem, normalizado em brilho e contraste (MOPS [4]). A §6 compara os
+                detectores.</p>
               <p class="here" id="here-pontos">Gere um mosaico para ver os números desta execução.</p>
             </div>
             <figure class="figure"><div class="pair"><img id="img-pontos1" alt="Pontos na imagem 1"><img id="img-pontos2" alt="Pontos na imagem 2"></div><figcaption>Pontos detectados; o raio do círculo é a escala em que cada um foi achado</figcaption></figure>
@@ -179,7 +194,7 @@ D(x, y, σ) = L(x, y, kσ) − L(x, y, σ),  k = 2^(1/3)</div>
               <h3>Casar descritores parecidos</h3>
               <p>Para cada ponto da imagem 1, procura-se na imagem 2 o descritor mais próximo (d₁) e o segundo
                 mais próximo (d₂). Se os dois estão quase à mesma distância, o ponto é ambíguo, como uma folha
-                entre muitas folhas, e o par é descartado. Esse é o teste de razão de Lowe:</p>
+                entre muitas folhas, e o par é descartado. Esse é o teste de razão de Lowe [2]:</p>
               <div class="formula">NNDR = d₁ / d₂ &lt; 0,8   →  aceita o par</div>
               <p>O histograma mostra a razão de todos os pontos. Os pares certos se juntam perto de zero, e os
                 ambíguos se acumulam perto de 1. O limiar fica no vale entre os dois grupos.</p>
@@ -196,7 +211,7 @@ D(x, y, σ) = L(x, y, kσ) − L(x, y, σ),  k = 2^(1/3)</div>
               <span class="n">04</span>
               <h3>Votar na translação com o RANSAC</h3>
               <p>Se a câmera só se deslocou, todo par correto aponta o mesmo deslocamento. Cada par vira então
-                um voto t<sub>i</sub> = x₁ − x₂. Um único par já define uma hipótese, então o RANSAC sorteia um,
+                um voto t<sub>i</sub> = x₁ − x₂. Um único par já define uma hipótese, então o RANSAC [5] sorteia um,
                 conta quantos votos caem a menos de ε dele e repete. Fica a hipótese com mais apoio.</p>
               <div class="formula">tᵢ = x₁ᵢ − x₂ᵢ
 inlier  ⇔  ‖tᵢ − t‖ ≤ ε
@@ -232,9 +247,60 @@ wₖ(x) = distância de x até a borda da imagem k</div>
       </div>
     </section>
 
+    <section class="section" id="detectores" aria-labelledby="t-det">
+      <div class="wrap">
+        <div class="section-head"><span class="step">6</span><h2 id="t-det">Comparação entre detectores</h2></div>
+        <p class="section-intro">Os quatro detectores alimentam exatamente o mesmo casamento (NNDR + checagem mútua),
+          o mesmo RANSAC e a mesma mistura. Só muda o que conta como “ponto” e como ele é descrito. Dois foram
+          implementados do zero; os do OpenCV servem de referência.</p>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Detector</th><th>O que é um ponto</th><th>Descritor</th><th>Distância</th><th>Invariante a</th></tr></thead>
+            <tbody>
+              <tr><td><b>SIFT</b><br><span class="muted">implementação própria [2]</span></td>
+                <td>extremo da diferença de gaussianas no espaço-escala: uma mancha clara ou escura de certo tamanho</td>
+                <td>128 valores: histogramas de 8 direções de gradiente numa grade 4×4, girados pela orientação do ponto</td>
+                <td>euclidiana</td><td>escala, rotação, brilho</td></tr>
+              <tr><td><b>Harris + MOPS</b><br><span class="muted">implementação própria [3, 4]</span></td>
+                <td>canto: os dois autovalores da matriz de autocorrelação são grandes; o ANMS espalha os pontos pela imagem</td>
+                <td>64 valores: recorte 8×8 amostrado a cada 5 px, normalizado em brilho e contraste</td>
+                <td>euclidiana</td><td>brilho; uma escala só e sem rotação, o que basta para translação</td></tr>
+              <tr><td><b>SIFT</b><br><span class="muted">OpenCV</span></td>
+                <td>como o SIFT próprio</td><td>como o SIFT próprio</td><td>euclidiana</td>
+                <td>referência para validar a implementação própria</td></tr>
+              <tr><td><b>ORB</b><br><span class="muted">OpenCV [6]</span></td>
+                <td>canto FAST numa pirâmide de escalas, orientado pelo centroide de intensidade</td>
+                <td>256 bits: comparações de brilho entre pares de pixels (BRIEF)</td>
+                <td>Hamming</td><td>rotação; escala pela pirâmide</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Nas imagens de entrada atuais</h3>
+        <p class="sub-intro">Os quatro rodam sobre o mesmo par, com os parâmetros da §3. O desvio é a distância
+          de cada t até a mediana dos quatro.</p>
+        <div class="run">
+          <button type="button" class="btn" id="btn-cmp" disabled>Comparar os quatro detectores</button>
+          <p class="status" id="cmp-status"></p>
+        </div>
+        <div class="table-wrap">
+          <table class="table num-table" id="cmp-table">
+            <thead><tr><th>Detector</th><th>Pontos (1 / 2)</th><th>Pares NNDR</th><th>Inliers</th><th>t (px)</th><th>Desvio</th><th>Erro RMS</th><th>Detecção</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="here" id="cmp-reading" hidden></p>
+        <div class="cmp-grid" id="cmp-grid"></div>
+        <p class="sub-intro cmp-guide">O que observar nas figuras: no SIFT, o raio de cada círculo é a escala em que o
+          ponto foi achado, de detalhes finos a manchas grandes. No Harris, todos têm o mesmo tamanho, e o ANMS os
+          distribui por toda a imagem. O ORB concentra muitos pontos nos cantos mais fortes; com descritores
+          binários, o casamento é mais barato por par, mas há muito mais pares a comparar.</p>
+      </div>
+    </section>
+
     <section class="section" id="limites" aria-labelledby="t-lim">
       <div class="wrap">
-        <div class="section-head"><span class="step">5</span><h2 id="t-lim">Onde a translação não basta</h2></div>
+        <div class="section-head"><span class="step">7</span><h2 id="t-lim">Limitações do modelo de translação</h2></div>
         <div class="limits">
           <div>
             <h3>Perspectiva e paralaxe</h3>
@@ -251,8 +317,8 @@ wₖ(x) = distância de x até a borda da imagem k</div>
           <div>
             <h3>Padrões repetidos</h3>
             <p>Num tabuleiro, todas as casas têm o mesmo descritor. O teste NNDR deixa passar poucos pares, e
-              os que sobram podem votar num deslocamento errado por uma casa inteira. Compare SIFT e Harris
-              nesse exemplo: os dois discordam.</p>
+              os que sobram podem votar num deslocamento errado por uma casa inteira. Carregue o exemplo e veja
+              a §6: os detectores não chegam ao mesmo t.</p>
             <button type="button" class="btn" data-sample="rover_tabuleiro">Ver o tabuleiro</button>
           </div>
           <div>
@@ -263,17 +329,27 @@ wₖ(x) = distância de x até a borda da imagem k</div>
         </div>
       </div>
     </section>
-  </main>
 
-  <footer class="foot">
+  <section class="section refs" id="referencias" aria-labelledby="t-ref">
     <div class="wrap">
-      <p>Algoritmos implementados a partir de R. Szeliski, <i>Computer Vision: Algorithms and Applications</i>,
-        2ª ed., caps. 7 e 8, e D. Lowe, “Distinctive Image Features from Scale-Invariant Keypoints” (2004).</p>
-      <p id="credits">Imagens: par da Atividade 03 e capturas do Rover (LabVIP/UFPI).</p>
-      <p>Direção visual guiada pela skill <a href="https://github.com/heydamir/unslop">unslop</a>, de Damir
-        Sokolovsky (CC BY 4.0). Código sob licença MIT · <a href="https://github.com/gutoportelaa/panografia_estudo">código-fonte</a></p>
+      <div class="section-head"><h2 id="t-ref">Referências</h2></div>
+      <ol class="reflist">
+        <li>R. Szeliski. <i>Computer Vision: Algorithms and Applications</i>, 2ª ed. Springer, 2022. Cap. 7
+          (detecção e casamento de características) e cap. 8 (alinhamento e costura de imagens).</li>
+        <li>D. G. Lowe. Distinctive image features from scale-invariant keypoints. <i>International Journal of
+          Computer Vision</i>, 60(2):91–110, 2004.</li>
+        <li>C. Harris e M. Stephens. A combined corner and edge detector. <i>Alvey Vision Conference</i>, 1988.</li>
+        <li>M. Brown, R. Szeliski e S. Winder. Multi-image matching using multi-scale oriented patches.
+          <i>CVPR</i>, 2005.</li>
+        <li>M. A. Fischler e R. C. Bolles. Random sample consensus: a paradigm for model fitting with applications
+          to image analysis and automated cartography. <i>Communications of the ACM</i>, 24(6):381–395, 1981.</li>
+        <li>E. Rublee, V. Rabaud, K. Konolige e G. Bradski. ORB: an efficient alternative to SIFT or SURF.
+          <i>ICCV</i>, 2011.</li>
+      </ol>
+      <p class="credits" id="credits"></p>
     </div>
-  </footer>
+  </section>
+  </main>
   <script src="app.js"></script>
 </body>
 </html>

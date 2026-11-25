@@ -243,6 +243,24 @@ mesclada:
 
 ![Mosaico](docs/figs/08_mosaico.jpg)
 
+### Comparação entre detectores
+
+Os quatro detectores passam pelo mesmo casamento NNDR, pelo mesmo RANSAC e pela
+mesma mistura; só muda o que conta como ponto e como ele é descrito. No par da
+atividade (JPEG de `web/samples/`, parâmetros padrão):
+
+| Detector | Pontos (1 / 2) | Pares NNDR | Inliers | $\mathbf{t}$ (px) | Erro RMS |
+|---|---|---|---|---|---|
+| SIFT (próprio) | 907 / 789 | 303 | 295 | (361,90; −0,38) | 0,54 |
+| Harris + MOPS (próprio) | 1582 / 1269 | 564 | 558 | (361,91; −0,33) | 0,80 |
+| SIFT (OpenCV) | 3384 / 3150 | 960 | 943 | (361,93; −0,40) | 0,59 |
+| ORB (OpenCV) | 3933 / 3855 | 1022 | 995 | (361,73; −0,15) | 0,99 |
+
+Todos chegam ao mesmo $\mathbf{t}$ com menos de 0,3 px de diferença. No
+tabuleiro, três concordam em $t_x \approx -283$ px e o SIFT próprio fica em
+$-226$ px: com casas iguais, ele votou num aglomerado diferente. A seção 6 do
+relatório interativo refaz essa tabela para qualquer par.
+
 ### Onde a translação não basta
 
 | Situação | O que acontece | Exemplo no site |

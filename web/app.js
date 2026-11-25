@@ -15,7 +15,7 @@ const objectUrls = [];
 const form = $("#form");
 const status = $("#status");
 const runBtn = $("#btn-run");
-const demoBtn = $("#btn-demo");
+const cmpBtn = $("#btn-cmp");
 
 // ---------------------------------------------------------------------------
 // Formatação: vírgula decimal e sinal de menos tipográfico
@@ -32,7 +32,7 @@ function setStatus(msg, { error = false, busy = false } = {}) {
 function updateRunState() {
   const ready = Boolean(engine && engine.ready);
   runBtn.disabled = !(files.img1 && files.img2 && ready);
-  demoBtn.disabled = !ready;
+  cmpBtn.disabled = !(files.img1 && files.img2 && ready);
 }
 
 // ===========================================================================
@@ -130,7 +130,11 @@ function setFile(slot, file, { keepTruth = false } = {}) {
   img.dataset.url = URL.createObjectURL(file);
   img.src = img.dataset.url;
   img.hidden = false;
+  img.onload = () => {
+    $(`[data-fname="${slot}"]`).textContent = `${file.name} · ${img.naturalWidth} × ${img.naturalHeight} px`;
+  };
   $(".drop-hint", drop).hidden = true;
+  markComparisonStale();
   drop.classList.add("filled");
   updateRunState();
 }
@@ -199,7 +203,7 @@ async function loadGallery() {
     });
   });
   const credits = [...new Set(samples.map((s) => s.credit).filter(Boolean))];
-  if (credits.length) $("#credits").textContent = "Imagens: " + credits.join(" · ");
+  if (credits.length) $("#credits").textContent = "Fontes das imagens de teste: " + credits.join("; ") + ".";
 }
 
 $$("[data-sample]").forEach((b) => b.addEventListener("click", () => {
@@ -207,7 +211,6 @@ $$("[data-sample]").forEach((b) => b.addEventListener("click", () => {
   runSample(b.dataset.sample);
 }));
 
-demoBtn.addEventListener("click", () => { userTouched = true; runSample("atividade").then(() => scrollToResult()); });
 
 // ----- Par sintético: recortes com deslocamento conhecido -----
 function canvasToFile(canvas, name) {
@@ -293,23 +296,28 @@ function scrollToResult() {
   $("#resultados").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function run({ scroll = true } = {}) {
-  if (!files.img1 || !files.img2 || !engine?.ready) return;
-  const options = {
+function currentOptions() {
+  return {
     detector: form.detector.value,
     blend: form.blend.value,
     ratio: Number(form.ratio.value),
     ransac_threshold: Number(form.ransac_threshold.value),
     mutual: form.mutual.checked,
   };
+}
+
+async function run({ scroll = true } = {}) {
+  if (!files.img1 || !files.img2 || !engine?.ready) return;
+  const options = currentOptions();
   runBtn.disabled = true;
-  demoBtn.disabled = true;
   setStatus("Detectando, casando, votando e mesclando", { busy: true });
   try {
     while (objectUrls.length) URL.revokeObjectURL(objectUrls.pop());
     const data = await engine.stitch(files.img1, files.img2, options);
     lastResult = data;
     render(data);
+    markComparisonStale();
+    maybeCompare();
     setStatus(`t = ${fmtT(data.t)} px, ${data.n_inliers} inliers, ${fmt(data.timings_ms.total / 1000, 1)} s`);
     if (scroll) scrollToResult();
   } catch (err) {
@@ -386,6 +394,109 @@ function renderWalk(res) {
     drawVotes($("#chart-votes-zoom"), d.votos, res.t, eps, true);
   }
 }
+
+// ===========================================================================
+// Comparação entre detectores: o mesmo par, os mesmos parâmetros, quatro detectores
+// ===========================================================================
+const DETECTORS = [
+  ["sift", "SIFT (próprio)"],
+  ["harris", "Harris + MOPS (próprio)"],
+  ["opencv-sift", "SIFT (OpenCV)"],
+  ["opencv-orb", "ORB (OpenCV)"],
+];
+let cmpGen = 0;          // invalida comparações em andamento quando a entrada muda
+let cmpStale = true;
+let cmpVisible = false;
+
+function setCmpStatus(msg, busy = false) {
+  $("#cmp-status").innerHTML = (busy ? '<span class="spinner" aria-hidden="true"></span>' : "") + msg;
+}
+
+function markComparisonStale() {
+  cmpStale = true;
+  cmpGen++;
+  if ($("#cmp-table tbody").children.length) setCmpStatus("As entradas mudaram desde a última comparação.");
+}
+
+function maybeCompare() {
+  if (cmpStale && cmpVisible && lastResult) compare();
+}
+
+const median = (xs) => {
+  const v = [...xs].sort((a, b) => a - b), m = v.length >> 1;
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+};
+
+async function compare() {
+  if (!files.img1 || !files.img2 || !engine?.ready) return;
+  const gen = ++cmpGen;
+  cmpStale = false;
+  const [f1, f2] = [files.img1, files.img2];
+  const base = currentOptions();
+  const tbody = $("#cmp-table tbody");
+  tbody.innerHTML = DETECTORS.map(([id, name]) =>
+    `<tr data-det="${id}"><td>${name}</td><td class="pending" colspan="7">na fila</td></tr>`).join("");
+  $("#cmp-grid").innerHTML = "";
+  $("#cmp-reading").hidden = true;
+  const out = {};
+  for (const [id, name] of DETECTORS) {
+    const row = $(`tr[data-det="${id}"]`, tbody);
+    row.innerHTML = `<td>${name}</td><td class="pending" colspan="7">calculando</td>`;
+    setCmpStatus(`Rodando ${name}`, true);
+    try { out[id] = await engine.stitch(f1, f2, { ...base, detector: id, figuras: "pontos1" }); }
+    catch (err) { out[id] = { error: err.message }; }
+    if (gen !== cmpGen) return;
+    const r = out[id];
+    row.innerHTML = r.error
+      ? `<td>${name}</td><td class="off" colspan="7">${r.error}</td>`
+      : `<td>${name}</td><td>${r.n_keypoints[0]} / ${r.n_keypoints[1]}</td><td>${r.n_matches}</td>
+         <td>${r.n_inliers} (${fmt(100 * r.inlier_ratio, 0)}%)</td><td>${fmtT(r.t)}</td><td class="dev">…</td>
+         <td>${fmt(r.rmse, 2)} px</td><td>${fmt(r.timings_ms.deteccao / 1000, 2)} s</td>`;
+  }
+
+  const ok = DETECTORS.filter(([id]) => !out[id].error);
+  const eps = base.ransac_threshold;
+  const tol = Math.max(2 * eps, 3);
+  let reading = "";
+  if (ok.length) {
+    const mt = [median(ok.map(([id]) => out[id].t[0])), median(ok.map(([id]) => out[id].t[1]))];
+    const dev = Object.fromEntries(ok.map(([id]) => [id, Math.hypot(out[id].t[0] - mt[0], out[id].t[1] - mt[1])]));
+    for (const [id] of ok) {
+      const cell = $(`tr[data-det="${id}"] .dev`, tbody);
+      cell.textContent = `${fmt(dev[id], 2)} px`;
+      cell.classList.toggle("off", dev[id] > tol);
+    }
+    const off = ok.filter(([id]) => dev[id] > tol);
+    const fastest = ok.reduce((a, b) => (out[a[0]].timings_ms.deteccao <= out[b[0]].timings_ms.deteccao ? a : b));
+    const most = ok.reduce((a, b) => (out[a[0]].n_inliers >= out[b[0]].n_inliers ? a : b));
+    if (!off.length && ok.length > 1) {
+      const maxDev = Math.max(...ok.map(([id]) => dev[id]));
+      reading = `Os ${ok.length} detectores chegam ao mesmo t, a no máximo ${fmt(maxDev, 2)} px da mediana
+        ${fmtT(mt)}. Neste par, trocar o detector muda a quantidade de pontos e o custo, não a resposta:
+        ${most[1]} deixou mais inliers (${out[most[0]].n_inliers}) e ${fastest[1]} detectou mais rápido
+        (${fmt(out[fastest[0]].timings_ms.deteccao / 1000, 2)} s).`;
+    } else if (off.length) {
+      reading = `${off.map(([id, n]) => `${n}, com t = ${fmtT(out[id].t)},`).join(" e ")}
+        ${off.length > 1 ? "ficam" : "fica"} a mais de ${fmt(tol, 0)} px da mediana ${fmtT(mt)}. Quando detectores
+        diferentes chegam a deslocamentos diferentes, pelo menos um deles votou num aglomerado errado; o número
+        de inliers e o erro RMS ajudam a julgar qual.`;
+    }
+  }
+  const failed = DETECTORS.filter(([id]) => out[id].error);
+  if (failed.length) reading += ` ${failed.map(([, n]) => n).join(" e ")} não ${failed.length > 1 ? "conseguiram" : "conseguiu"} estimar t.`;
+  if (reading) { $("#cmp-reading").innerHTML = reading.trim(); $("#cmp-reading").hidden = false; }
+
+  $("#cmp-grid").innerHTML = ok.map(([id, name]) => `
+    <figure class="figure"><img src="${out[id].images.pontos1}" alt="Pontos de ${name} na imagem 1">
+      <figcaption>${name}: ${out[id].n_keypoints[0]} pontos na imagem 1</figcaption></figure>`).join("");
+  setCmpStatus("");
+}
+
+cmpBtn.addEventListener("click", () => { cmpStale = true; compare(); });
+new IntersectionObserver((entries) => {
+  cmpVisible = entries.some((e) => e.isIntersecting);
+  maybeCompare();
+}, { rootMargin: "200px" }).observe($("#detectores"));
 
 // ===========================================================================
 // Gráficos em SVG
