@@ -1,38 +1,42 @@
 [
   {
     "id": "atividade",
-    "title": "Paisagem (atividade)",
-    "tag": "caso principal",
+    "title": "Paisagem",
+    "tag": "translação pura",
     "kind": "ok",
     "img1": "samples/atividade_1.jpg",
     "img2": "samples/atividade_2.jpg",
-    "note": "Par fornecido na Atividade 03. A câmera só translada, então o modelo se ajusta quase perfeitamente: t ≈ (361,9; −0,4) px e mais de 97% de inliers."
+    "credit": "paisagem fornecida na Atividade 03 da disciplina",
+    "note": "O par da Atividade 03. A segunda foto é a primeira deslocada cerca de 362 px para a direita, sem girar, então quase todos os votos caem no mesmo ponto."
   },
   {
     "id": "rover_capa",
-    "title": "Capa de livro (Rover)",
+    "title": "Capa de livro",
     "tag": "captura real",
     "kind": "ok",
     "img1": "samples/rover_capa_1.jpg",
     "img2": "samples/rover_capa_2.jpg",
-    "note": "Quadros de vídeo da câmera do Rover. Há uma pequena rotação além da translação; o alinhamento ainda é bom, mas o erro RMS sobe para cerca de 1,6 px."
+    "credit": "capturas da câmera do Rover, LabVIP/UFPI",
+    "note": "Dois quadros de vídeo da câmera do Rover. Além de deslocar, a câmera girou um pouco, e por isso os votos se espalham mais e o erro RMS passa de 1 px. O alinhamento ainda convence."
   },
   {
     "id": "rover_poster",
-    "title": "Pôster (Rover)",
-    "tag": "limite do modelo",
+    "title": "Pôster",
+    "tag": "limite: perspectiva",
     "kind": "warn",
     "img1": "samples/rover_poster_1.jpg",
     "img2": "samples/rover_poster_2.jpg",
-    "note": "A câmera mudou de ponto de vista: há perspectiva, não só translação. O RANSAC acha um consenso, mas só parte das correspondências cabe numa translação, e o mosaico mostra contornos duplicados."
+    "credit": "capturas da câmera do Rover, LabVIP/UFPI",
+    "note": "A câmera mudou de ângulo diante do pôster. Pontos em lados diferentes do papel se deslocam de forma diferente, então só uma parte dos votos concorda e o mosaico mostra a moldura duplicada."
   },
   {
     "id": "rover_tabuleiro",
-    "title": "Tabuleiro (Rover)",
-    "tag": "caso de falha",
+    "title": "Tabuleiro",
+    "tag": "falha: padrão repetido",
     "kind": "bad",
     "img1": "samples/rover_tabuleiro_1.jpg",
     "img2": "samples/rover_tabuleiro_2.jpg",
-    "note": "Padrão repetitivo: casas idênticas geram correspondências ambíguas, e o consenso do RANSAC pode cair numa translação deslocada de uma ou mais casas. Compare SIFT e Harris."
+    "credit": "capturas da câmera do Rover, LabVIP/UFPI",
+    "note": "Todas as casas do tabuleiro são iguais, então o descritor de uma casa combina com várias outras. Sobram poucos pares, e o voto vencedor pode estar errado por uma casa inteira. Troque entre SIFT e Harris e compare os resultados."
   }
 ]

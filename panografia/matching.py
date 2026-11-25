@@ -12,7 +12,7 @@ livro aponta como mais confiável que o NNDR unidirecional.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -25,6 +25,8 @@ class Matches:
     idx2: np.ndarray       # (M,) índices em features2
     distance: np.ndarray   # (M,) distância ao vizinho mais próximo
     ratio: np.ndarray      # (M,) NNDR d1/d2
+    #: NNDR de TODOS os descritores da imagem 1, antes do limiar (para histogramas)
+    all_ratio: np.ndarray = field(default_factory=lambda: np.zeros(0, np.float32))
 
     def __len__(self) -> int:
         return len(self.idx1)
@@ -79,4 +81,4 @@ def match_descriptors(
         back = np.argmin(dist, axis=0)
         keep &= back[best] == rows
     idx = np.nonzero(keep)[0]
-    return Matches(idx, best[idx], d1[idx], nndr[idx])
+    return Matches(idx, best[idx], d1[idx], nndr[idx], nndr.astype(np.float32))

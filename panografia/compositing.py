@@ -61,8 +61,11 @@ def _feather_weight(shape) -> np.ndarray:
     return dist.astype(np.float32)
 
 
-def composite(img1: np.ndarray, img2: np.ndarray, t, mode: str = "feather"):
+def composite(img1: np.ndarray, img2: np.ndarray, t, mode: str = "feather", return_alpha: bool = False):
     """Gera o mosaico. Retorna (mosaico uint8, Canvas, máscara de sobreposição).
+
+    Com ``return_alpha=True`` devolve também α = w2 / (w1 + w2), a fração da
+    imagem 2 em cada pixel (NaN fora das imagens), usada nas figuras didáticas.
 
     Cada imagem k contribui com peso w_k (1 para média, mapa de distância para
     feathering). O mosaico é Σ warp(I_k·w_k) / Σ warp(w_k), isto é, uma média
@@ -93,8 +96,11 @@ def composite(img1: np.ndarray, img2: np.ndarray, t, mode: str = "feather"):
     safe = np.where(total > 1e-6, total, 1.0)
     if c1.ndim == 3:
         safe = safe[..., None]
-    mosaic = (c1 + c2) / safe
-    return np.clip(np.round(mosaic), 0, 255).astype(np.uint8), canvas, overlap
+    mosaic = np.clip(np.round((c1 + c2) / safe), 0, 255).astype(np.uint8)
+    if return_alpha:
+        alpha = np.where(total > 1e-6, w2 / np.where(total > 1e-6, total, 1.0), np.nan).astype(np.float32)
+        return mosaic, canvas, overlap, alpha
+    return mosaic, canvas, overlap
 
 
 def side_by_side(img1: np.ndarray, img2: np.ndarray, gap: int = 8, color=(255, 255, 255)) -> np.ndarray:

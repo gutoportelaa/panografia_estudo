@@ -14,7 +14,7 @@ from .compositing import composite, side_by_side
 from .features import detect
 from .matching import match_descriptors
 from .ransac import estimate_translation_ransac
-from .visualization import draw_keypoints, draw_matches, overlap_outline
+from .visualization import draw_keypoints, draw_matches, overlap_outline, scale_space_figure, weights_figure
 
 
 @dataclass
@@ -43,6 +43,8 @@ class StitchResult:
     mosaic_size: tuple[int, int]
     timings_ms: dict[str, float]
     images: dict[str, np.ndarray] = field(repr=False)
+    #: Dados para as figuras do passo a passo (votos do RANSAC, histograma NNDR)
+    didatica: dict = field(default_factory=dict, repr=False)
 
     def summary(self) -> dict:
         """Resultados numéricos serializáveis (sem as imagens)."""
@@ -106,7 +108,7 @@ def stitch(img1: np.ndarray, img2: np.ndarray, params: StitchParams | None = Non
         raise StitchError(f"apenas {est.n_inliers} inlier(s): as imagens não parecem se sobrepor.")
 
     t0 = time.perf_counter()
-    mosaic, canvas, _ = composite(img1, img2, est.t, p.blend)
+    mosaic, canvas, _, alpha = composite(img1, img2, est.t, p.blend, return_alpha=True)
     tick("composicao", t0)
 
     images = {
@@ -116,6 +118,8 @@ def stitch(img1: np.ndarray, img2: np.ndarray, params: StitchParams | None = Non
         "contornos": overlap_outline(mosaic, canvas, img1.shape, img2.shape),
         "pontos1": draw_keypoints(img1, f1.points, f1.scales),
         "pontos2": draw_keypoints(img2, f2.points, f2.scales),
+        "escala": scale_space_figure(img1),
+        "pesos": weights_figure(alpha),
     }
     timings["total"] = round(sum(timings.values()), 1)
     return StitchResult(
@@ -130,4 +134,32 @@ def stitch(img1: np.ndarray, img2: np.ndarray, params: StitchParams | None = Non
         mosaic_size=(canvas.width, canvas.height),
         timings_ms=timings,
         images=images,
+        didatica=_didactic_data(m.all_ratio, p.ratio, pts1 - pts2, est.inliers, p.seed),
     )
+
+
+def _didactic_data(all_ratio, ratio, disp, inliers, seed, max_votes: int = 1500) -> dict:
+    """Dados enxutos para as figuras interativas da interface.
+
+    * ``votos``: cada correspondência vota numa translação t_i = x1 − x2;
+      o aglomerado dos inliers é o consenso que o RANSAC encontra.
+    * ``nndr``: histograma da razão d1/d2 de todos os pontos da imagem 1,
+      com o limiar usado para aceitar uma correspondência.
+    """
+    idx = np.arange(len(disp))
+    if len(idx) > max_votes:
+        idx = np.sort(np.random.default_rng(seed).choice(idx, max_votes, replace=False))
+    counts, edges = np.histogram(np.clip(all_ratio, 0, 0.9999), bins=20, range=(0.0, 1.0))
+    return {
+        "votos": {
+            "t": np.round(disp[idx], 2).tolist(),
+            "inlier": inliers[idx].astype(int).tolist(),
+        },
+        "nndr": {
+            "contagens": counts.tolist(),
+            "bordas": np.round(edges.astype(np.float64), 3).tolist(),
+            "limiar": ratio,
+            "aceitos": int((all_ratio < ratio).sum()),
+            "total": int(len(all_ratio)),
+        },
+    }
