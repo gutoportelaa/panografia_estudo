@@ -240,8 +240,13 @@ wₖ(x) = distância de x até a borda da imagem k</div>
             <h3>Perspectiva e paralaxe</h3>
             <p>Quando a câmera gira ou muda de ponto de vista, objetos próximos e distantes se deslocam de
               formas diferentes. Nenhum t único serve para todos, então o RANSAC aceita só uma parte dos pares
-              e o mosaico mostra contornos duplicados. O modelo certo aí é uma homografia (Szeliski §8.2).</p>
-            <button type="button" class="btn" data-sample="rover_poster">Ver o pôster</button>
+              e o mosaico mostra contornos duplicados. O modelo certo aí é uma homografia (Szeliski §8.2). Fotos de
+              drone com a câmera para baixo escapam disso: visto do alto, o chão é quase um plano.</p>
+            <div class="btn-row">
+              <button type="button" class="btn" data-sample="rover_poster">Ver o pôster</button>
+              <button type="button" class="btn" data-sample="sb_parksquare">Ver a praça</button>
+              <button type="button" class="btn" data-sample="sb_times_square">Ver Times Square</button>
+            </div>
           </div>
           <div>
             <h3>Padrões repetidos</h3>

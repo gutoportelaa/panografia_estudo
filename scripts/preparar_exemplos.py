@@ -85,6 +85,8 @@ def main() -> int:
         print("rode antes: python scripts/baixar_datasets.py", file=sys.stderr)
         return 1
     catalog = json.loads(CATALOG.read_text())
+    # Notas revisadas à mão sobrevivem a uma nova rodada; só as cenas novas recebem texto gerado.
+    revised = {c["id"]: c for c in catalog}
     catalog = [c for c in catalog if not c["id"].startswith(("aerial234", "sb_"))]
     added = []
     for sid, folder, title, tag, kind, credit in SCENES:
@@ -100,9 +102,10 @@ def main() -> int:
         _, a, b, r, n1, n2 = best
         for k, img in ((1, a), (2, b)):
             cv2.imwrite(str(SAMPLES / f"{sid}_{k}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        added.append({"id": sid, "title": title, "tag": tag, "kind": kind,
+        old = revised.get(sid, {})
+        added.append({"id": sid, "title": old.get("title", title), "tag": old.get("tag", tag), "kind": kind,
                       "img1": f"samples/{sid}_1.jpg", "img2": f"samples/{sid}_2.jpg",
-                      "credit": credit, "note": note_for(kind, r, n1, n2),
+                      "credit": credit, "note": old.get("note") or note_for(kind, r, n1, n2),
                       "_stats": {"t": [round(v, 1) for v in r.t], "inliers": r.n_inliers,
                                  "ratio": round(r.inlier_ratio, 3), "rmse": round(r.rmse, 2)}})
         print(f"  {sid}: {n1} + {n2}  t={np.round(r.t, 1)}  inliers={r.n_inliers} ({100 * r.inlier_ratio:.0f}%)")

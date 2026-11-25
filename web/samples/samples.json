@@ -20,6 +20,36 @@
     "note": "Dois quadros de vídeo da câmera do Rover. Além de deslocar, a câmera girou um pouco, e por isso os votos se espalham mais e o erro RMS passa de 1 px. O alinhamento ainda convence."
   },
   {
+    "id": "aerial234",
+    "title": "Sequência aérea",
+    "tag": "drone, câmera para baixo",
+    "kind": "ok",
+    "img1": "samples/aerial234_1.jpg",
+    "img2": "samples/aerial234_2.jpg",
+    "credit": "Aerial234, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Duas fotos seguidas de um drone voando com a câmera apontada para baixo. Visto do alto, o chão é quase um plano, então passar de uma foto para a outra é quase só deslizar: t ≈ (6; 151) px. Os telhados altos se deslocam um pouco mais que a rua (paralaxe), por isso 43% dos pares votam exatamente no mesmo t."
+  },
+  {
+    "id": "sb_kindergarten",
+    "title": "Escola vista do drone",
+    "tag": "drone, câmera para baixo",
+    "kind": "ok",
+    "img1": "samples/sb_kindergarten_1.jpg",
+    "img2": "samples/sb_kindergarten_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Drone andando na diagonal sobre uma escola: t ≈ (252; 117) px, com deslocamento nos dois eixos. Os cantos pretos do mosaico são a parte da tela que nenhuma das duas fotos cobre. 49% dos pares concordam; o resto cai em árvores e telhados que mudam com o ângulo."
+  },
+  {
+    "id": "sb_gateyiplaza",
+    "title": "Praça vista do drone",
+    "tag": "drone, câmera para baixo",
+    "kind": "ok",
+    "img1": "samples/sb_gateyiplaza_1.jpg",
+    "img2": "samples/sb_gateyiplaza_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Estacionamento visto de cima, com o drone avançando na vertical: t ≈ (12; −150) px. As faixas pintadas no chão são um plano perfeito e alinham sem emenda visível."
+  },
+  {
     "id": "rover_poster",
     "title": "Pôster",
     "tag": "limite: perspectiva",
@@ -28,6 +58,56 @@
     "img2": "samples/rover_poster_2.jpg",
     "credit": "capturas da câmera do Rover, LabVIP/UFPI",
     "note": "A câmera mudou de ângulo diante do pôster. Pontos em lados diferentes do papel se deslocam de forma diferente, então só uma parte dos votos concorda e o mosaico mostra a moldura duplicada."
+  },
+  {
+    "id": "sb_garden",
+    "title": "Prédio entre árvores",
+    "tag": "limite: paralaxe",
+    "kind": "warn",
+    "img1": "samples/sb_garden_1.jpg",
+    "img2": "samples/sb_garden_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Fotos tiradas do chão, girando a câmera. As árvores estão perto e o prédio está longe, e cada um se desloca de um jeito (paralaxe). Só 20% dos pares concordam com t ≈ (298; −34) px: o prédio alinha, mas a calçada em primeiro plano entorta na emenda."
+  },
+  {
+    "id": "sb_carpark",
+    "title": "Fachada",
+    "tag": "limite: paralaxe",
+    "kind": "warn",
+    "img1": "samples/sb_carpark_1.jpg",
+    "img2": "samples/sb_carpark_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Fachada fotografada de perto, com a câmera girando. A parede do fundo e o asfalto em primeiro plano pedem deslocamentos diferentes; 34% dos pares escolhem t ≈ (334; 11) px, e o chão perto da emenda fica borrado."
+  },
+  {
+    "id": "sb_parksquare",
+    "title": "Praça",
+    "tag": "limite: paralaxe",
+    "kind": "warn",
+    "img1": "samples/sb_parksquare_1.jpg",
+    "img2": "samples/sb_parksquare_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Praça com prédios ao fundo e piso em perspectiva. Só 16 pares (11%) concordam com um único t, e os prédios distantes aparecem duplicados no mosaico. Compare com o histograma NNDR: há poucos pares claros."
+  },
+  {
+    "id": "sb_street",
+    "title": "Rua",
+    "tag": "limite: paralaxe",
+    "kind": "warn",
+    "img1": "samples/sb_street_1.jpg",
+    "img2": "samples/sb_street_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "Esquina com prédio, árvores e grade em profundidades diferentes. Apenas 10 pares (6%) votam juntos. O mosaico parece razoável à primeira vista, mas a grade e os postes não batem na emenda."
+  },
+  {
+    "id": "sb_times_square",
+    "title": "Times Square",
+    "tag": "limite: câmera inclinada",
+    "kind": "warn",
+    "img1": "samples/sb_times_square_1.jpg",
+    "img2": "samples/sb_times_square_2.jpg",
+    "credit": "StitchBench, por RussRobin (Hugging Face), CC BY 4.0",
+    "note": "A câmera aponta para cima e gira entre as fotos, então as bordas dos prédios convergem de forma diferente em cada uma. Isso é uma homografia, não uma translação: 31% dos pares concordam com t ≈ (−15; 107) px, e as torres aparecem dobradas."
   },
   {
     "id": "rover_tabuleiro",
