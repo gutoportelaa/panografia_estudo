@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+saida/
+# Material de apoio (direitos autorais de terceiros / arquivos da disciplina)
+*.pdf
+*.zip
+__MACOSX/
+Atividade*/
+_site/
+build/
+dist/
+saida_ci/

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panografia</title>
+  <meta name="description" content="Costura de imagens transladadas: SIFT/Harris, NNDR, RANSAC e blending linear, rodando no navegador.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <h1>Panografia</h1>
+          <p>Costura de imagens transladadas</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <span class="engine" id="engine" title="Onde o Python está executando">…</span>
+        <a class="link" href="#metodo">Como funciona</a>
+        <a class="link" href="https://github.com/gutoportelaa/panografia_estudo">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel" aria-labelledby="entrada-titulo">
+      <h2 id="entrada-titulo">1. Imagens de entrada</h2>
+
+      <h3 class="sub">Exemplos</h3>
+      <div class="gallery" id="gallery" role="list"></div>
+      <p class="note" id="sample-note" hidden></p>
+
+      <h3 class="sub">Suas imagens</h3>
+      <div class="drops">
+        <label class="drop" data-slot="img1">
+          <input type="file" accept="image/*" hidden>
+          <img alt="" hidden>
+          <span class="drop-hint"><strong>Imagem 1</strong> (referência)<br>arraste ou clique para escolher</span>
+        </label>
+        <label class="drop" data-slot="img2">
+          <input type="file" accept="image/*" hidden>
+          <img alt="" hidden>
+          <span class="drop-hint"><strong>Imagem 2</strong> (será transladada)<br>arraste ou clique para escolher</span>
+        </label>
+      </div>
+
+      <details class="synth">
+        <summary>Gerar par sintético com translação conhecida (gabarito)</summary>
+        <p class="note">Recorta duas janelas sobrepostas da <b>Imagem 1</b>, com a segunda deslocada por (tx, ty).
+          O resultado estimado é então comparado com esse gabarito.</p>
+        <div class="synth-row">
+          <label>tx (px) <input type="number" id="synth-tx" value="180" step="1"></label>
+          <label>ty (px) <input type="number" id="synth-ty" value="25" step="1"></label>
+          <label>Ruído σ <input type="number" id="synth-noise" value="0" min="0" max="40" step="1"></label>
+          <button type="button" class="btn ghost" id="btn-synth">Gerar par</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel" aria-labelledby="param-titulo">
+      <h2 id="param-titulo">2. Parâmetros</h2>
+      <form id="form" class="params">
+        <label>Detector de características
+          <select name="detector" disabled></select>
+        </label>
+        <label>Composição na sobreposição
+          <select name="blend" disabled></select>
+        </label>
+        <label>Limiar NNDR <output data-for="ratio"></output>
+          <input type="range" name="ratio" min="0.5" max="0.95" step="0.01" value="0.8">
+        </label>
+        <label>Tolerância ε do RANSAC (px) <output data-for="ransac_threshold"></output>
+          <input type="range" name="ransac_threshold" min="0.5" max="10" step="0.5" value="3">
+        </label>
+        <label class="check"><input type="checkbox" name="mutual" checked> Exigir correspondência mútua</label>
+        <button type="submit" class="btn primary" id="btn-run" disabled>Gerar mosaico</button>
+      </form>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel" id="resultados" hidden aria-labelledby="res-titulo">
+      <div class="panel-head">
+        <h2 id="res-titulo">3. Resultados</h2>
+        <a class="btn ghost" id="btn-download" download="mosaico.jpg">Baixar mosaico.jpg</a>
+      </div>
+      <div class="metrics" id="metrics"></div>
+
+      <div class="compare">
+        <figure>
+          <figcaption><strong>Panografia</strong>: imagem 2 transladada por <em>t</em> e mesclada</figcaption>
+          <img id="img-mosaico" alt="Mosaico panorâmico">
+        </figure>
+        <figure>
+          <figcaption><strong>Justaposição direta</strong>: imagens lado a lado, sem alinhamento</figcaption>
+          <img id="img-justaposicao" alt="Imagens lado a lado sem alinhamento">
+        </figure>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true" data-tab="correspondencias">Correspondências</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="contornos">Quadros no mosaico</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="pontos">Pontos detectados</button>
+      </div>
+      <div class="tab-body">
+        <figure data-pane="correspondencias">
+          <img id="img-correspondencias" alt="Correspondências">
+          <figcaption><span class="dot ok"></span>inliers &nbsp; <span class="dot bad"></span>outliers rejeitados pelo RANSAC (amostra de até 250 linhas)</figcaption>
+        </figure>
+        <figure data-pane="contornos" hidden>
+          <img id="img-contornos" alt="Contornos das imagens no mosaico">
+          <figcaption><span class="dot c1"></span>imagem 1 &nbsp; <span class="dot c2"></span>imagem 2 no quadro global</figcaption>
+        </figure>
+        <figure data-pane="pontos" hidden>
+          <div class="pair"><img id="img-pontos1" alt="Pontos na imagem 1"><img id="img-pontos2" alt="Pontos na imagem 2"></div>
+          <figcaption>Pontos de interesse; o raio indica a escala de detecção</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="panel prose" id="metodo" aria-labelledby="metodo-titulo">
+      <h2 id="metodo-titulo">Como funciona</h2>
+      <ol class="steps">
+        <li><h3>Detecção</h3><p><b>SIFT</b>: extremos na pirâmide de diferenças de gaussianas, refinados com precisão subpixel e descritos por histogramas de gradiente 4×4×8. <b>Harris</b>: resposta det(A) − α·tr(A)², supressão não-máxima adaptativa e patch MOPS 8×8. <span class="ref">Szeliski §7.1.1–7.1.2</span></p></li>
+        <li><h3>Correspondência</h3><p>Vizinho mais próximo com teste de razão NNDR = d₁/d₂ e, opcionalmente, checagem cruzada. <span class="ref">§7.1.3, eq. 7.18</span></p></li>
+        <li><h3>Translação robusta</h3><p>Cada par gera uma hipótese t = x₁ − x₂ (amostra mínima k = 1). O RANSAC escolhe a de maior consenso dentro de ε e ajusta t por mínimos quadrados, que no caso da translação é a média dos inliers. <span class="ref">§8.1.2, §8.1.4</span></p></li>
+        <li><h3>Composição</h3><p>A imagem 2 é transladada para o quadro global e mesclada por média simples ou por <i>feathering</i>, com pesos lineares em função da distância à borda. <span class="ref">§8.4.2</span></p></li>
+      </ol>
+      <p class="note">Tudo roda localmente: no GitHub Pages, o mesmo código Python executa no seu navegador via
+        <a href="https://pyodide.org">Pyodide</a> (WebAssembly), e nenhuma imagem é enviada a servidores.</p>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Projeto open source · licença MIT · <a href="https://github.com/gutoportelaa/panografia_estudo">código-fonte</a></footer>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "params": {
+    "detector": "sift",
+    "max_points": 4000,
+    "ratio": 0.8,
+    "mutual": true,
+    "ransac_threshold": 3.0,
+    "ransac_confidence": 0.999,
+    "ransac_max_iterations": 2000,
+    "blend": "feather",
+    "seed": 0
+  },
+  "t": [
+    361.9105108498724,
+    -0.3825592015327428
+  ],
+  "n_keypoints": [
+    912,
+    790
+  ],
+  "n_matches": 305,
+  "n_inliers": 297,
+  "inlier_ratio": 0.9737704918032787,
+  "ransac_iterations": 2,
+  "rmse": 0.5409686926334432,
+  "mosaic_size": [
+    1002,
+    557
+  ],
+  "timings_ms": {
+    "deteccao": 725.8,
+    "correspondencia": 8.5,
+    "ransac": 6.3,
+    "composicao": 25.2,
+    "total": 765.8
+  }
+}

@@ -1,0 +1,20 @@
+[project]
+name = "panografia"
+version = "0.2.0"
+description = "Costura de imagens transladadas: SIFT, Harris/MOPS, NNDR, RANSAC e feathering"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26", "opencv-python-headless>=4.8", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+panografia = "panografia.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["panografia*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

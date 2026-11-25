@@ -1,0 +1,38 @@
+[
+  {
+    "id": "atividade",
+    "title": "Paisagem (atividade)",
+    "tag": "caso principal",
+    "kind": "ok",
+    "img1": "samples/atividade_1.jpg",
+    "img2": "samples/atividade_2.jpg",
+    "note": "Par fornecido na Atividade 03. A câmera só translada, então o modelo se ajusta quase perfeitamente: t ≈ (361,9; −0,4) px e mais de 97% de inliers."
+  },
+  {
+    "id": "rover_capa",
+    "title": "Capa de livro (Rover)",
+    "tag": "captura real",
+    "kind": "ok",
+    "img1": "samples/rover_capa_1.jpg",
+    "img2": "samples/rover_capa_2.jpg",
+    "note": "Quadros de vídeo da câmera do Rover. Há uma pequena rotação além da translação; o alinhamento ainda é bom, mas o erro RMS sobe para cerca de 1,6 px."
+  },
+  {
+    "id": "rover_poster",
+    "title": "Pôster (Rover)",
+    "tag": "limite do modelo",
+    "kind": "warn",
+    "img1": "samples/rover_poster_1.jpg",
+    "img2": "samples/rover_poster_2.jpg",
+    "note": "A câmera mudou de ponto de vista: há perspectiva, não só translação. O RANSAC acha um consenso, mas só parte das correspondências cabe numa translação, e o mosaico mostra contornos duplicados."
+  },
+  {
+    "id": "rover_tabuleiro",
+    "title": "Tabuleiro (Rover)",
+    "tag": "caso de falha",
+    "kind": "bad",
+    "img1": "samples/rover_tabuleiro_1.jpg",
+    "img2": "samples/rover_tabuleiro_2.jpg",
+    "note": "Padrão repetitivo: casas idênticas geram correspondências ambíguas, e o consenso do RANSAC pode cair numa translação deslocada de uma ou mais casas. Compare SIFT e Harris."
+  }
+]
