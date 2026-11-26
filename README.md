@@ -260,7 +260,7 @@ relatório interativo refaz essa tabela para qualquer par.
 |---|---|---|
 | A câmera gira ou muda de ponto de vista | Objetos perto e longe se deslocam de formas diferentes (paralaxe); nenhum $\mathbf{t}$ serve para todos, e o mosaico mostra contornos duplicados. O modelo adequado é uma homografia (Szeliski §8.2) | Pôster, Praça, Times Square, Pessoa no laboratório |
 | Padrão repetitivo | Casas iguais têm descritores iguais; sobram poucos pares, e o voto vencedor pode estar errado por uma casa inteira | Tabuleiro |
-| Pouca sobreposição | Os votos só vêm da faixa em comum; com menos de uns 20% de sobreposição, o aglomerado fica ralo | Par sintético com tx grande |
+| Pouca sobreposição | Os votos só vêm da faixa em comum; com menos de uns 20% de sobreposição, o aglomerado fica ralo | Teste com resposta conhecida, com tx grande |
 
 ## Imagens
 
@@ -280,8 +280,9 @@ python scripts/baixar_datasets.py      # baixa só as cenas usadas
 python scripts/preparar_exemplos.py    # escolhe os pares e atualiza o site
 ```
 
-O site também gera **pares sintéticos**: dois recortes de qualquer imagem com
-$(t_x, t_y)$ escolhido, para comparar a estimativa com o gabarito.
+O site também tem um **teste com resposta conhecida**: recorta duas janelas da
+mesma imagem, a segunda deslocada por um $(t_x, t_y)$ escolhido, e mostra a
+distância entre o $\mathbf{t}$ estimado e esse valor.
 
 ## Estrutura
 

@@ -259,7 +259,7 @@ $("#btn-synth").addEventListener("click", async () => {
   setFile("img2", f2);
   groundTruth = { tx, ty };
   selectSample(null);
-  setStatus(`Par sintético com t = ${fmtT([tx, ty], 0)} px${sigma ? `, ruído σ = ${sigma}` : ""}`);
+  setStatus(`Par fabricado com resposta t = ${fmtT([tx, ty], 0)} px${sigma ? `, ruído σ = ${sigma}` : ""}; agora gere o mosaico`);
 });
 
 // ===========================================================================
@@ -351,8 +351,8 @@ function render(res) {
     <div class="s">${fmt(100 * res.inlier_ratio, 1)}% dos pares concordam com t</div></div>`);
   if (groundTruth) {
     const err = Math.hypot(res.t_original[0] - groundTruth.tx, res.t_original[1] - groundTruth.ty);
-    facts.push(`<div class="fact truth${err > 1 ? " off" : ""}"><div class="k">Erro em relação ao gabarito</div><div class="v">${fmt(err, 2)} px</div>
-      <div class="s">gabarito t = ${fmtT([groundTruth.tx, groundTruth.ty], 0)}</div></div>`);
+    facts.push(`<div class="fact truth${err > 1 ? " off" : ""}"><div class="k">Erro em relação à resposta conhecida</div><div class="v">${fmt(err, 2)} px</div>
+      <div class="s">resposta: t = ${fmtT([groundTruth.tx, groundTruth.ty], 0)}</div></div>`);
   }
   const meta = [
     ["erro RMS", `${fmt(res.rmse, 3)} px`],

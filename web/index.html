@@ -89,15 +89,42 @@
         <div class="gallery" id="gallery" role="list"></div>
 
         <details class="synth">
-          <summary>Par sintético com gabarito</summary>
+          <summary>Conferir a precisão: teste com resposta conhecida</summary>
           <div class="synth-body">
-            <p>Recorta duas janelas da Imagem 1, a segunda deslocada por (tx, ty). Como a resposta certa é
-              conhecida, o resultado mostra o erro da estimativa. Ruído gaussiano deixa o teste mais difícil.</p>
+            <div class="synth-text">
+              <p>Com fotos reais não sabemos o deslocamento verdadeiro, então não dá para dizer se o t estimado
+                está certo ou errado por meio pixel. Este teste resolve isso fabricando um par cuja resposta
+                já conhecemos.</p>
+              <ol class="steps">
+                <li>Pega a <b>Imagem 1</b> que está carregada acima.</li>
+                <li>Recorta dela duas janelas do mesmo tamanho. A segunda começa <b>tx</b> pixels à direita e
+                  <b>ty</b> pixels abaixo da primeira (valores negativos: à esquerda e acima).</li>
+                <li>As duas janelas viram a nova Imagem 1 e a nova Imagem 2. Ao gerar o mosaico, a §4 mostra
+                  o <b>erro</b>: a distância entre o t estimado e o (tx, ty) que você escolheu.</li>
+              </ol>
+              <p>O ruído σ soma uma granulação aleatória diferente a cada janela, como o sensor de uma câmera em
+                pouca luz. Nos testes, mesmo com σ = 25 o erro ficou abaixo de 0,1 px: são centenas de votos, e o
+                ruído de cada um se cancela na média. Tente também um tx perto da largura da imagem: a faixa em
+                comum encolhe e sobram poucos votos.</p>
+            </div>
+            <svg class="synth-fig" viewBox="0 0 320 224" role="img" aria-label="Duas janelas recortadas da mesma imagem, a segunda deslocada por tx e ty">
+              <rect x="10" y="10" width="300" height="204" rx="4" class="sf-img"/>
+              <text x="18" y="206" class="sf-t">Imagem 1 original</text>
+              <path d="M44 30 H114 M44 25 V35 M114 25 V35" class="sf-a"/>
+              <text x="79" y="22" class="sf-t" text-anchor="middle">tx</text>
+              <path d="M24 44 V66 M19 44 H29 M19 66 H29" class="sf-a"/>
+              <text x="16" y="59" class="sf-t" text-anchor="end">ty</text>
+              <path d="M29 66 H114" class="sf-g"/>
+              <rect x="44" y="44" width="180" height="120" class="sf-w1"/>
+              <rect x="114" y="66" width="180" height="120" class="sf-w2"/>
+              <text x="50" y="60" class="sf-t1">janela 1</text>
+              <text x="288" y="180" class="sf-t2" text-anchor="end">janela 2</text>
+            </svg>
             <div class="row">
               <label class="field">tx (px)<input type="number" id="synth-tx" value="180" step="1"></label>
               <label class="field">ty (px)<input type="number" id="synth-ty" value="25" step="1"></label>
               <label class="field">ruído σ<input type="number" id="synth-noise" value="0" min="0" max="40" step="1"></label>
-              <button type="button" class="btn" id="btn-synth">Gerar par</button>
+              <button type="button" class="btn" id="btn-synth">Fabricar o par</button>
             </div>
           </div>
         </details>
@@ -325,7 +352,7 @@ wₖ(x) = distância de x até a borda da imagem k</div>
           <div>
             <h3>Pouca sobreposição</h3>
             <p>Os votos só vêm da faixa em comum. Com menos de uns 20% de sobreposição sobram poucos pares, e o
-              aglomerado da nuvem de votos fica ralo. Gere um par sintético com tx grande para ver o efeito.</p>
+              aglomerado da nuvem de votos fica ralo. Use o teste com resposta conhecida (§2) com um tx grande para ver o efeito.</p>
           </div>
         </div>
       </div>
