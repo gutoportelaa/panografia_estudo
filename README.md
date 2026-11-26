@@ -1,11 +1,4 @@
-```text
- ____                                    __ _
-|  _ \ __ _ _ __   ___   __ _ _ __ __ _ / _(_) __ _
-| |_) / _` | '_ \ / _ \ / _` | '__/ _` | |_| |/ _` |
-|  __/ (_| | | | | (_) | (_| | | | (_| |  _| | (_| |
-|_|   \__,_|_| |_|\___/ \__, |_|  \__,_|_| |_|\__,_|
-                        |___/
-```
+# Panografia
 
 Costura de duas fotos sobrepostas encontrando o **deslocamento** entre elas.
 Pontos marcantes são detectados com **SIFT** (ou Harris), casados pelo **teste
