@@ -1,6 +1,6 @@
 /* Executa o pacote Python `panografia` no navegador via Pyodide (WebAssembly).
  *
- * Mensagens recebidas:  {id, type: "init"} | {id, type: "stitch", img1, img2, options}
+ * Mensagens recebidas:  {id, type: "init"} | {id, type: "stitch", imagens: [ArrayBuffer…], options}
  * Mensagens enviadas:   {type: "progress", message}
  *                       {id, ok: true, result} | {id, ok: false, error}
  */
@@ -34,9 +34,10 @@ from panografia import service
 def _config():
     return json.dumps({**service.config(), "engine": "pyodide"})
 
-def _run(b1, b2, options_json):
+def _run(buffers, options_json):
     try:
-        summary, images = service.run(bytes(b1.to_py()), bytes(b2.to_py()), json.loads(options_json))
+        datas = [bytes(b.to_py()) for b in buffers]
+        summary, images = service.run_many(datas, json.loads(options_json))
     except (service.InputError, service.StitchError) as exc:
         return json.dumps({"error": str(exc)}), {}
     return json.dumps(summary), images
@@ -54,8 +55,8 @@ self.onmessage = async (event) => {
       return;
     }
     if (type === "stitch") {
-      const { img1, img2, options } = event.data;
-      const out = py.globals.get("_run")(new Uint8Array(img1), new Uint8Array(img2), JSON.stringify(options));
+      const { imagens, options } = event.data;
+      const out = py.globals.get("_run")(imagens.map((b) => new Uint8Array(b)), JSON.stringify(options));
       const summary = JSON.parse(out.get(0));
       if (summary.error) throw new Error(summary.error);
       const pyImages = out.get(1);

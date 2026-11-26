@@ -254,6 +254,26 @@ tabuleiro, três concordam em $t_x \approx -283$ px e o SIFT próprio fica em
 $-226$ px: com casas iguais, ele votou num aglomerado diferente. A seção 6 do
 relatório interativo refaz essa tabela para qualquer par.
 
+### Mais de duas imagens
+
+O enunciado pede duas imagens, mas o mesmo método se estende a uma sequência
+em que cada foto sobrepõe a seguinte. Cada par vizinho $(k, k+1)$ é uma
+panografia de duas imagens, com a sua translação $\mathbf{t}_k$. As
+translações se somam para levar a imagem $k$ ao quadro da imagem 1:
+
+$$
+\mathbf{x}_1 = \mathbf{x}_k + (\mathbf{t}_1 + \dots + \mathbf{t}_{k-1})
+$$
+
+e todas são mescladas juntas, com o mesmo feathering. A ordem importa, e o
+erro de cada par também se acumula ao longo da cadeia. No site, use
+“Adicionar” na seção 2 (até 8 imagens) ou o exemplo “Sequência aérea, 5
+fotos”. Na linha de comando, basta passar mais arquivos:
+
+```sh
+python -m panografia a.jpg b.jpg c.jpg -o saida/
+```
+
 ### Onde a translação não basta
 
 | Situação | O que acontece | Exemplo no site |

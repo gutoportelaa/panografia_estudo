@@ -10,11 +10,13 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
-from .compositing import composite, side_by_side
+from .compositing import composite, composite_many, side_by_side, side_by_side_many
 from .features import detect
 from .matching import match_descriptors
 from .ransac import estimate_translation_ransac
-from .visualization import draw_keypoints, draw_matches, overlap_outline, scale_space_figure, weights_figure
+from .visualization import (
+    draw_keypoints, draw_matches, outline_many, overlap_outline, scale_space_figure, weights_figure,
+)
 
 
 @dataclass
@@ -177,3 +179,71 @@ def _didactic_data(all_ratio, ratio, disp, inliers, seed, max_votes: int = 1500)
             "total": int(len(all_ratio)),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Mais de duas imagens
+# ---------------------------------------------------------------------------
+MOSAIC_FIGURES = ("mosaico", "justaposicao", "contornos")
+
+
+@dataclass
+class MultiStitchResult:
+    """Sequência de N imagens: um :class:`StitchResult` por par vizinho.
+
+    ``positions[k]`` leva a imagem k ao quadro da imagem 1: x1 = xk + positions[k],
+    obtida somando as translações dos pares (1, 2), (2, 3), …, (k−1, k).
+    """
+
+    pairs: list[StitchResult]
+    positions: list[tuple[float, float]]
+    mosaic_size: tuple[int, int]
+    detail: int
+    images: dict[str, np.ndarray] = field(repr=False)
+
+
+def stitch_many(
+    images: list[np.ndarray],
+    params: StitchParams | None = None,
+    detail: int = 0,
+    figures: tuple[str, ...] | list[str] | None = None,
+) -> MultiStitchResult:
+    """Alinha uma sequência de imagens, cada uma sobrepondo a seguinte.
+
+    Cada par vizinho (k, k+1) é tratado como na versão de duas imagens. As
+    translações se acumulam: se x_k = x_{k+1} + t_k, então
+    x_1 = x_{k+1} + (t_1 + … + t_k). Os erros de cada par também se somam ao
+    longo da cadeia, por isso a ordem das imagens importa.
+
+    ``detail`` escolhe o par cujas figuras do passo a passo são desenhadas.
+    """
+    if len(images) < 2:
+        raise ValueError("são necessárias pelo menos duas imagens")
+    p = params or StitchParams()
+    detail = int(np.clip(detail, 0, len(images) - 2))
+    wanted = FIGURES if figures is None else [f for f in figures if f in FIGURES]
+    pair_figs = [f for f in wanted if f not in MOSAIC_FIGURES] if len(images) > 2 else wanted
+
+    pairs = []
+    for k in range(len(images) - 1):
+        try:
+            pairs.append(stitch(images[k], images[k + 1], p, pair_figs if k == detail else []))
+        except StitchError as exc:
+            raise StitchError(f"par {k + 1}–{k + 2}: {exc}") from exc
+
+    positions = [(0.0, 0.0)]
+    for r in pairs:
+        positions.append((positions[-1][0] + r.t[0], positions[-1][1] + r.t[1]))
+
+    out = dict(pairs[detail].images)
+    if len(images) == 2:
+        size = pairs[0].mosaic_size
+    else:
+        mosaic, offsets, size = composite_many(images, positions, p.blend)
+        if "mosaico" in wanted:
+            out["mosaico"] = mosaic
+        if "justaposicao" in wanted:
+            out["justaposicao"] = side_by_side_many(images)
+        if "contornos" in wanted:
+            out["contornos"] = outline_many(mosaic, offsets, [im.shape for im in images])
+    return MultiStitchResult(pairs, positions, tuple(size), detail, out)

@@ -32,7 +32,6 @@ CREDIT_BENCH = "StitchBench, por RussRobin (Hugging Face), CC BY 4.0"
 
 # id, pasta, título, etiqueta, tipo, crédito
 SCENES = [
-    ("aerial234", "Aerial234", "Sequência aérea", "drone, câmera para baixo", "ok", CREDIT_AERIAL),
     ("sb_kindergarten", "StitchBench/Aerial/Kindergarten", "Escola vista do drone", "drone, câmera para baixo", "ok", CREDIT_BENCH),
     ("sb_gateyiplaza", "StitchBench/Aerial/GateYiPlaza", "Praça vista do drone", "drone, câmera para baixo", "ok", CREDIT_BENCH),
     ("sb_garden", "StitchBench/General/APAP-01_garden", "Jardim", "limite: paralaxe", "warn", CREDIT_BENCH),
@@ -40,6 +39,13 @@ SCENES = [
     ("sb_parksquare", "StitchBench/General/REW_parksquare", "Praça", "limite: paralaxe", "warn", CREDIT_BENCH),
     ("sb_street", "StitchBench/General/SPHP-04_street", "Rua", "limite: paralaxe", "warn", CREDIT_BENCH),
     ("sb_times_square", "StitchBench/General/CAVE-04_times_square", "Times Square", "limite: paralaxe", "warn", CREDIT_BENCH),
+]
+
+
+# Sequências de mais de duas fotos: id, pasta, arquivos em ordem, título, etiqueta, crédito
+SEQUENCES = [
+    ("aerial_seq", "Aerial234", ["004.JPG", "005.JPG", "006.JPG", "007.JPG", "008.JPG"],
+     "Sequência aérea, 5 fotos", "várias imagens", CREDIT_AERIAL),
 ]
 
 
@@ -87,7 +93,7 @@ def main() -> int:
     catalog = json.loads(CATALOG.read_text())
     # Notas revisadas à mão sobrevivem a uma nova rodada; só as cenas novas recebem texto gerado.
     revised = {c["id"]: c for c in catalog}
-    catalog = [c for c in catalog if not c["id"].startswith(("aerial234", "sb_"))]
+    catalog = [c for c in catalog if not c["id"].startswith(("aerial", "sb_"))]
     added = []
     for sid, folder, title, tag, kind, credit in SCENES:
         files = sorted(p for p in (EXT / folder).glob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
@@ -109,8 +115,22 @@ def main() -> int:
                       "_stats": {"t": [round(v, 1) for v in r.t], "inliers": r.n_inliers,
                                  "ratio": round(r.inlier_ratio, 3), "rmse": round(r.rmse, 2)}})
         print(f"  {sid}: {n1} + {n2}  t={np.round(r.t, 1)}  inliers={r.n_inliers} ({100 * r.inlier_ratio:.0f}%)")
+    for sid, folder, names, title, tag, credit in SEQUENCES:
+        if not all((EXT / folder / n).exists() for n in names):
+            print(f"  {sid}: faltam imagens em {folder}, pulando")
+            continue
+        imgs = [fit(cv2.imread(str(EXT / folder / n))) for n in names]
+        paths = []
+        for k, img in enumerate(imgs, 1):
+            cv2.imwrite(str(SAMPLES / f"{sid}_{k}.jpg"), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            paths.append(f"samples/{sid}_{k}.jpg")
+        old = revised.get(sid, {})
+        added.append({"id": sid, "title": old.get("title", title), "tag": old.get("tag", tag), "kind": "ok",
+                      "imgs": paths, "credit": credit,
+                      "note": old.get("note") or f"Fotos {', '.join(names)}, em ordem de voo."})
+        print(f"  {sid}: {len(paths)} fotos")
     # Exemplos de drone logo após a paisagem; os de paralaxe antes das falhas do Rover.
-    ok = [c for c in added if c["kind"] == "ok"]
+    ok = sorted((c for c in added if c["kind"] == "ok"), key=lambda c: "imgs" not in c)  # sequências primeiro
     warn = [c for c in added if c["kind"] != "ok"]
     ordered = catalog[:2] + ok + catalog[2:3] + warn + catalog[3:]
     for c in ordered:

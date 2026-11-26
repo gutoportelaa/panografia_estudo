@@ -72,6 +72,19 @@ def overlap_outline(mosaic: np.ndarray, canvas, shape1, shape2) -> np.ndarray:
     return out
 
 
+def outline_many(mosaic: np.ndarray, offsets, shapes) -> np.ndarray:
+    """Contornos numerados de N imagens no quadro do mosaico."""
+    out = mosaic.copy()
+    for k, ((ox, oy), shape) in enumerate(zip(offsets, shapes)):
+        h, w = shape[:2]
+        color = FRAME1_COLOR if k % 2 == 0 else FRAME2_COLOR
+        x0, y0 = int(round(ox)), int(round(oy))
+        cv2.rectangle(out, (x0, y0), (x0 + w - 1, y0 + h - 1), color, 2, cv2.LINE_AA)
+        cv2.putText(out, str(k + 1), (x0 + 10, y0 + 34), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 0, 0), 5, cv2.LINE_AA)
+        cv2.putText(out, str(k + 1), (x0 + 10, y0 + 34), cv2.FONT_HERSHEY_SIMPLEX, 1.1, color, 2, cv2.LINE_AA)
+    return out
+
+
 def scale_space_figure(image: np.ndarray, sigma: float = 1.6, s: int = 3, tile_width: int = 320) -> np.ndarray:
     """Primeira oitava do espaço-escala: L(x, y, σ·kⁱ) em cima e D = L(kσ) − L(σ) embaixo.
 

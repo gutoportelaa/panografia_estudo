@@ -103,6 +103,54 @@ def composite(img1: np.ndarray, img2: np.ndarray, t, mode: str = "feather", retu
     return mosaic, canvas, overlap
 
 
+def composite_many(images, positions, mode: str = "feather"):
+    """Mosaico de N imagens. ``positions[k]`` leva a imagem k ao quadro da imagem 0
+    (x0 = xk + positions[k]); ``positions[0]`` é (0, 0).
+
+    Mesma média ponderada de :func:`composite`, agora com N camadas:
+    Σ warp(I_k·w_k) / Σ warp(w_k). No modo ``overlay`` cada imagem cobre as
+    anteriores. Retorna (mosaico uint8, lista de offsets no mosaico, (largura, altura)).
+    """
+    if mode not in BLEND_MODES:
+        raise ValueError(f"modo de blending desconhecido: {mode!r}; opções: {sorted(BLEND_MODES)}")
+    pos = np.asarray(positions, np.float64)
+    min_x = min(0.0, float(pos[:, 0].min()))
+    min_y = min(0.0, float(pos[:, 1].min()))
+    max_x = max(float(p[0]) + img.shape[1] for p, img in zip(pos, images))
+    max_y = max(float(p[1]) + img.shape[0] for p, img in zip(pos, images))
+    origin = np.array([-math.floor(min_x), -math.floor(min_y)], np.float64)
+    size = (int(math.ceil(max_x + origin[0])), int(math.ceil(max_y + origin[1])))
+    offsets = [origin + p for p in pos]
+
+    color_acc = np.zeros((size[1], size[0], 3), np.float32)
+    weight_acc = np.zeros((size[1], size[0]), np.float32)
+    for img, off in zip(images, offsets):
+        weight = _feather_weight(img.shape) if mode == "feather" else np.ones(img.shape[:2], np.float32)
+        color = warp_translation(img.astype(np.float32) * weight[..., None], off, size)
+        w = warp_translation(weight, off, size)
+        if mode == "overlay":
+            keep = 1.0 - warp_translation(np.ones(img.shape[:2], np.float32), off, size)
+            color_acc *= keep[..., None]
+            weight_acc *= keep
+        color_acc += color
+        weight_acc += w
+    safe = np.where(weight_acc > 1e-6, weight_acc, 1.0)[..., None]
+    mosaic = np.clip(np.round(color_acc / safe), 0, 255).astype(np.uint8)
+    return mosaic, offsets, size
+
+
+def side_by_side_many(images, gap: int = 8, color=(255, 255, 255)) -> np.ndarray:
+    """Justaposição de N imagens numa linha, sem alinhamento."""
+    h = max(img.shape[0] for img in images)
+    w = sum(img.shape[1] for img in images) + gap * (len(images) - 1)
+    out = np.full((h, w, 3), color, np.uint8)
+    x = 0
+    for img in images:
+        out[: img.shape[0], x: x + img.shape[1]] = img
+        x += img.shape[1] + gap
+    return out
+
+
 def side_by_side(img1: np.ndarray, img2: np.ndarray, gap: int = 8, color=(255, 255, 255)) -> np.ndarray:
     """Justaposição direta das imagens, sem alinhamento (referência visual)."""
     h = max(img1.shape[0], img2.shape[0])

@@ -28,11 +28,11 @@
     557
   ],
   "timings_ms": {
-    "deteccao": 681.2,
-    "correspondencia": 7.2,
-    "ransac": 6.3,
-    "composicao": 24.2,
-    "total": 718.9
+    "deteccao": 684.3,
+    "correspondencia": 11.5,
+    "ransac": 6.5,
+    "composicao": 20.8,
+    "total": 723.1
   },
   "didatica": {
     "votos": {

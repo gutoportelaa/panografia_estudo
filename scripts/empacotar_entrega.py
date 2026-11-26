@@ -25,7 +25,7 @@ REPO = "https://github.com/gutoportelaa/panografia_estudo"
 INCLUDE = ["panografia", "app", "web", "tests", "data", "resultados", "scripts",
            "README.md", "LICENSE", "enunciado.md", "requirements.txt", "requirements-dev.txt",
            "pyproject.toml", "panografia.spec"]
-SKIP_SAMPLES = ("aerial234", "sb_", "joao")   # imagens de terceiros: ficam só no site
+SKIP_SAMPLES = ("aerial", "sb_", "joao")   # imagens de terceiros: ficam só no site
 
 
 def leia_me(r: dict) -> str:

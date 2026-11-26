@@ -52,6 +52,7 @@
             <tr><td>Imprimir t = (tx, ty) e o número de inliers</td><td>§4, quadro ao lado do mosaico</td></tr>
             <tr><td>Transladar a imagem 2 e gerar o mosaico (média ou blending linear)</td><td>§4 (mosaico.jpg para baixar) e §5, etapa 05</td></tr>
             <tr><td>Comparar o mosaico com a justaposição direta</td><td>§4, uma figura abaixo da outra</td></tr>
+            <tr><td><i>Extensão:</i> mais de duas imagens</td><td>§2 (adicionar imagens) e §4 (translações encadeadas)</td></tr>
           </tbody>
         </table>
       </div>
@@ -60,32 +61,19 @@
     <section class="section" id="entrada" aria-labelledby="t-entrada">
       <div class="wrap">
         <div class="section-head"><span class="step">2</span><h2 id="t-entrada">Imagens de entrada</h2></div>
-        <p class="section-intro">Por padrão, o par fornecido na atividade. Para usar as suas imagens, clique em
-          um dos quadros ou arraste um arquivo para ele; as duas fotos precisam ter uma faixa em comum.</p>
+        <p class="section-intro">Por padrão, o par fornecido na atividade. Para usar as suas imagens, clique numa
+          foto para trocá-la, ou use “Adicionar” para montar uma sequência de até 8. A <b>ordem importa</b>: cada
+          imagem precisa ter uma faixa em comum com a seguinte, como fotos tiradas girando ou andando sempre para
+          o mesmo lado. Também dá para arrastar vários arquivos de uma vez para a faixa abaixo.</p>
 
-        <div class="inputs">
-          <div class="slot">
-            <label class="drop" data-slot="img1">
-              <input type="file" accept="image/*" hidden>
-              <img alt="" hidden>
-              <span class="drop-hint"><b>Imagem 1</b>clique ou arraste um arquivo</span>
-            </label>
-            <p class="slot-cap"><b>Imagem 1</b>, referência: fica parada <span class="fname" data-fname="img1"></span></p>
-          </div>
-          <div class="slot">
-            <label class="drop" data-slot="img2">
-              <input type="file" accept="image/*" hidden>
-              <img alt="" hidden>
-              <span class="drop-hint"><b>Imagem 2</b>clique ou arraste um arquivo</span>
-            </label>
-            <p class="slot-cap"><b>Imagem 2</b>, deslocada por t até encaixar na 1 <span class="fname" data-fname="img2"></span></p>
-          </div>
-        </div>
+        <input type="file" id="file-input" accept="image/*" multiple hidden>
+        <div class="strip" id="strip" role="list" aria-label="Imagens de entrada, em ordem"></div>
+        <p class="strip-count" id="strip-count"></p>
         <p class="note" id="sample-note" hidden></p>
 
-        <h3 class="sub">Outros pares de teste</h3>
-        <p class="sub-intro">Pares escolhidos para mostrar onde a translação funciona (verde), onde ela só se
-          aproxima do movimento real (laranja) e onde falha (vermelho). Um clique carrega o par nos quadros acima.</p>
+        <h3 class="sub">Outros exemplos</h3>
+        <p class="sub-intro">Exemplos escolhidos para mostrar onde a translação funciona (verde), onde ela só se
+          aproxima do movimento real (laranja) e onde falha (vermelho). Um clique carrega as imagens na faixa acima.</p>
         <div class="gallery" id="gallery" role="list"></div>
 
         <details class="synth">
@@ -163,11 +151,15 @@
           <div class="figures">
             <figure class="figure">
               <img id="img-mosaico" alt="Mosaico panorâmico">
-              <figcaption>Panografia: a imagem 2 deslocada por t e mesclada à imagem 1</figcaption>
+              <figcaption id="cap-mosaico">Panografia: a imagem 2 deslocada por t e mesclada à imagem 1</figcaption>
             </figure>
             <figure class="figure">
               <img id="img-justaposicao" alt="As duas imagens lado a lado, sem alinhamento">
               <figcaption>Justaposição direta, sem alinhamento: a faixa em comum aparece duas vezes</figcaption>
+            </figure>
+            <figure class="figure">
+              <img id="img-contornos" alt="Mosaico com o contorno de cada imagem">
+              <figcaption id="cap-contornos">Onde cada imagem caiu no mosaico</figcaption>
             </figure>
           </div>
           <div class="facts" id="facts"></div>
@@ -180,6 +172,7 @@
         <div class="section-head"><span class="step">5</span><h2 id="t-walk">Método, etapa por etapa</h2></div>
         <p class="section-intro">O que o programa fez com as imagens de entrada, na ordem em que fez. As figuras e
           os números vêm da última execução; as equações seguem Szeliski [1], caps. 7 e 8.</p>
+        <p class="here" id="walk-pair" hidden></p>
 
         <div class="walk">
           <article class="walk-step">
@@ -305,7 +298,7 @@ wₖ(x) = distância de x até a borda da imagem k</div>
 
         <h3 class="sub">Nas imagens de entrada atuais</h3>
         <p class="sub-intro">Os quatro rodam sobre o mesmo par, com os parâmetros da §3. O desvio é a distância
-          de cada t até a mediana dos quatro.</p>
+          de cada t até a mediana dos quatro.<span id="cmp-pair"></span></p>
         <div class="run">
           <button type="button" class="btn" id="btn-cmp" disabled>Comparar os quatro detectores</button>
           <p class="status" id="cmp-status"></p>

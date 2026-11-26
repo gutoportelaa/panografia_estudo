@@ -36,8 +36,9 @@ def config():
 
 @app.post("/api/stitch")
 def stitch_endpoint(
-    img1: UploadFile = File(...),
-    img2: UploadFile = File(...),
+    imagens: list[UploadFile] | None = File(None),
+    img1: UploadFile | None = File(None),
+    img2: UploadFile | None = File(None),
     detector: str = Form("sift"),
     blend: str = Form("feather"),
     ratio: float = Form(0.8),
@@ -47,15 +48,20 @@ def stitch_endpoint(
     max_side: int = Form(service.DEFAULT_MAX_SIDE),
     seed: int = Form(0),
     figuras: str = Form(""),
+    detalhe: int = Form(0),
 ):
-    data1, data2 = img1.file.read(), img2.file.read()
-    if max(len(data1), len(data2)) > MAX_UPLOAD_BYTES:
+    # Uma sequência em "imagens" (em ordem) ou o par clássico img1/img2.
+    uploads = list(imagens or []) or [f for f in (img1, img2) if f is not None]
+    if not 2 <= len(uploads) <= service.MAX_IMAGES:
+        raise HTTPException(400, f"envie de 2 a {service.MAX_IMAGES} imagens")
+    datas = [f.file.read() for f in uploads]
+    if max(len(d) for d in datas) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"arquivo maior que {MAX_UPLOAD_BYTES // 2**20} MB")
     options = dict(detector=detector, blend=blend, ratio=ratio, mutual=mutual,
                    ransac_threshold=ransac_threshold, max_points=max_points, max_side=max_side, seed=seed,
-                   figuras=figuras)
+                   figuras=figuras, detalhe=detalhe)
     try:
-        summary, images = service.run(data1, data2, options)
+        summary, images = service.run_many(datas, options)
     except service.InputError as exc:
         raise HTTPException(400, str(exc)) from exc
     except service.StitchError as exc:

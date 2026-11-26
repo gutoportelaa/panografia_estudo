@@ -4,8 +4,10 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const SVG = "http://www.w3.org/2000/svg";
 
-const files = { img1: null, img2: null };
-let groundTruth = null;      // {tx, ty} quando o par é sintético
+let files = [];              // imagens em ordem: cada uma deve sobrepor a seguinte
+let detail = 0;              // par (detail, detail+1) mostrado no passo a passo e na comparação
+let maxImages = 8;
+let groundTruth = null;      // {tx, ty} quando o par foi fabricado com resposta conhecida
 let engine = null;
 let samples = [];
 let userTouched = false;     // o usuário já escolheu imagens? então não rodamos a demonstração sozinhos
@@ -31,8 +33,8 @@ function setStatus(msg, { error = false, busy = false } = {}) {
 
 function updateRunState() {
   const ready = Boolean(engine && engine.ready);
-  runBtn.disabled = !(files.img1 && files.img2 && ready);
-  cmpBtn.disabled = !(files.img1 && files.img2 && ready);
+  runBtn.disabled = !(files.length >= 2 && ready);
+  cmpBtn.disabled = !(files.length >= 2 && ready);
 }
 
 // ===========================================================================
@@ -46,10 +48,9 @@ async function serverEngine() {
     name: "Python local",
     ready: true,
     config: cfg,
-    async stitch(f1, f2, options) {
+    async stitch(list, options) {
       const body = new FormData();
-      body.append("img1", f1);
-      body.append("img2", f2);
+      for (const f of list) body.append("imagens", f);
       for (const [k, v] of Object.entries(options)) body.append(k, v);
       const resp = await fetch("api/stitch", { method: "POST", body });
       const data = await resp.json();
@@ -84,9 +85,9 @@ function pyodideEngine() {
     ready: false,
     config: null,
     async init() { eng.config = await call({ type: "init" }); eng.ready = true; return eng; },
-    async stitch(f1, f2, options) {
-      const [b1, b2] = await Promise.all([f1.arrayBuffer(), f2.arrayBuffer()]);
-      const res = await call({ type: "stitch", img1: b1, img2: b2, options }, [b1, b2]);
+    async stitch(list, options) {
+      const buffers = await Promise.all(list.map((f) => f.arrayBuffer()));
+      const res = await call({ type: "stitch", imagens: buffers, options }, buffers);
       for (const [k, bytes] of Object.entries(res.images)) {
         const url = URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
         objectUrls.push(url);
@@ -112,6 +113,7 @@ async function startEngine() {
   $("#engine").textContent = engine.name;
   $("#engine").classList.add("ready");
   applyConfig(engine.config);
+  maxImages = engine.config.max_images || maxImages;
   updateRunState();
   await galleryReady;
   if (!userTouched) await runSample("atividade");
@@ -121,37 +123,107 @@ async function startEngine() {
 // ===========================================================================
 // Entrada de imagens
 // ===========================================================================
-function setFile(slot, file, { keepTruth = false } = {}) {
-  files[slot] = file;
+const thumbUrls = new Map();   // File → URL da miniatura
+
+function urlFor(file) {
+  if (!thumbUrls.has(file)) thumbUrls.set(file, URL.createObjectURL(file));
+  return thumbUrls.get(file);
+}
+
+function setFiles(list, { keepTruth = false } = {}) {
+  for (const [f, url] of thumbUrls) if (!list.includes(f)) { URL.revokeObjectURL(url); thumbUrls.delete(f); }
+  files = list.slice(0, maxImages);
   if (!keepTruth) groundTruth = null;
-  const drop = $(`.drop[data-slot="${slot}"]`);
-  const img = $("img", drop);
-  if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
-  img.dataset.url = URL.createObjectURL(file);
-  img.src = img.dataset.url;
-  img.hidden = false;
-  img.onload = () => {
-    $(`[data-fname="${slot}"]`).textContent = `${file.name} · ${img.naturalWidth} × ${img.naturalHeight} px`;
-  };
-  $(".drop-hint", drop).hidden = true;
+  detail = Math.min(detail, Math.max(0, files.length - 2));
+  renderStrip();
   markComparisonStale();
-  drop.classList.add("filled");
   updateRunState();
 }
 
-$$(".drop").forEach((drop) => {
-  const slot = drop.dataset.slot;
-  const input = $("input", drop);
-  const take = (f) => { userTouched = true; selectSample(null); setFile(slot, f); };
-  input.addEventListener("change", () => input.files[0] && take(input.files[0]));
-  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-  drop.addEventListener("drop", (e) => {
-    e.preventDefault();
-    drop.classList.remove("over");
-    const f = e.dataTransfer.files[0];
-    if (f && f.type.startsWith("image/")) take(f);
+function userChanged(list) {
+  userTouched = true;
+  selectSample(null);
+  setFiles(list);
+}
+
+function renderStrip() {
+  const strip = $("#strip");
+  const tiles = files.map((f, k) => `
+    <figure class="tile" role="listitem" data-k="${k}">
+      <button type="button" class="tile-img" data-act="swap" title="Trocar a imagem ${k + 1}">
+        <img src="${urlFor(f)}" alt="Imagem ${k + 1}">
+      </button>
+      <figcaption>
+        <span class="tile-name"><b>Imagem ${k + 1}</b>${k === 0 ? ", referência" : ""}</span>
+        <span class="fname" data-fname="${k}">${f.name}</span>
+        <span class="tile-actions">
+          <button type="button" class="ibtn" data-act="left" ${k === 0 ? "disabled" : ""} aria-label="Mover para a esquerda">←</button>
+          <button type="button" class="ibtn" data-act="right" ${k === files.length - 1 ? "disabled" : ""} aria-label="Mover para a direita">→</button>
+          <button type="button" class="ibtn" data-act="drop" aria-label="Tirar a imagem ${k + 1}">tirar</button>
+        </span>
+      </figcaption>
+    </figure>`);
+  // Quadros vazios até completar o par mínimo.
+  for (let k = files.length; k < 2; k++) {
+    tiles.push(`<button type="button" class="tile empty" data-act="add" role="listitem">
+      <b>Imagem ${k + 1}</b>clique ou arraste um arquivo</button>`);
+  }
+  if (files.length >= 2 && files.length < maxImages) {
+    tiles.push(`<button type="button" class="tile empty add" data-act="add" role="listitem">
+      <b>+ Adicionar</b>mais uma imagem, que deve sobrepor a imagem ${files.length}</button>`);
+  }
+  strip.innerHTML = tiles.join("");
+  $$(".tile img", strip).forEach((img, k) => {
+    img.onload = () => {
+      const el = $(`[data-fname="${k}"]`);
+      if (el && files[k]) el.textContent = `${files[k].name} · ${img.naturalWidth} × ${img.naturalHeight} px`;
+    };
   });
+  $("#strip-count").textContent = files.length > 2
+    ? `${files.length} imagens: ${files.length - 1} pares vizinhos, cada um com a sua translação.`
+    : "";
+}
+
+let swapIndex = null;
+$("#strip").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const k = Number(btn.closest("[data-k]")?.dataset.k);
+  const list = files.slice();
+  switch (btn.dataset.act) {
+    case "add": swapIndex = null; $("#file-input").click(); return;
+    case "swap": swapIndex = k; $("#file-input").click(); return;
+    case "left": [list[k - 1], list[k]] = [list[k], list[k - 1]]; break;
+    case "right": [list[k + 1], list[k]] = [list[k], list[k + 1]]; break;
+    case "drop": list.splice(k, 1); break;
+  }
+  userChanged(list);
+});
+
+function addFiles(newFiles) {
+  const imgs = [...newFiles].filter((f) => f.type.startsWith("image/"));
+  if (!imgs.length) return;
+  let list = files.slice();
+  if (swapIndex !== null && imgs.length === 1) list[swapIndex] = imgs[0];
+  else list = list.concat(imgs);
+  swapIndex = null;
+  if (list.length > maxImages) setStatus(`No máximo ${maxImages} imagens; as demais foram ignoradas`, { error: true });
+  userChanged(list);
+}
+
+$("#file-input").addEventListener("change", (e) => {
+  addFiles(e.target.files);
+  e.target.value = "";
+});
+$("#file-input").addEventListener("cancel", () => { swapIndex = null; });
+const stripEl = $("#strip");
+stripEl.addEventListener("dragover", (e) => { e.preventDefault(); stripEl.classList.add("over"); });
+stripEl.addEventListener("dragleave", () => stripEl.classList.remove("over"));
+stripEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  stripEl.classList.remove("over");
+  swapIndex = null;
+  addFiles(e.dataTransfer.files);
 });
 
 async function fetchFile(url) {
@@ -171,9 +243,9 @@ function selectSample(sample) {
 async function loadSample(id) {
   const s = samples.find((x) => x.id === id);
   if (!s) return null;
-  const [f1, f2] = await Promise.all([fetchFile(s.img1), fetchFile(s.img2)]);
-  setFile("img1", f1);
-  setFile("img2", f2);
+  const list = await Promise.all((s.imgs || [s.img1, s.img2]).map(fetchFile));
+  detail = 0;
+  setFiles(list);
   selectSample(s);
   return s;
 }
@@ -189,12 +261,16 @@ async function runSample(id) {
 
 async function loadGallery() {
   samples = await (await fetch("samples/samples.json")).json();
-  $("#gallery").innerHTML = samples.map((s) => `
+  $("#gallery").innerHTML = samples.map((s) => {
+    const imgs = s.imgs || [s.img1, s.img2];
+    const more = imgs.length > 2 ? `<span class="more">+${imgs.length - 2}</span>` : "";
+    return `
     <button type="button" class="card" role="listitem" data-id="${s.id}" aria-pressed="false">
-      <span class="thumbs"><img src="${s.img1}" alt="" loading="lazy"><img src="${s.img2}" alt="" loading="lazy"></span>
+      <span class="thumbs"><img src="${imgs[0]}" alt="" loading="lazy"><img src="${imgs[1]}" alt="" loading="lazy">${more}</span>
       <span class="card-title">${s.title}</span>
       <span class="card-meta"><span class="dot ${s.kind}"></span>${s.tag}</span>
-    </button>`).join("");
+    </button>`;
+  }).join("");
   $$(".card", $("#gallery")).forEach((card) => {
     card.addEventListener("click", async () => {
       userTouched = true;
@@ -239,11 +315,11 @@ function cropWithNoise(bitmap, x, y, w, h, sigma) {
 
 $("#btn-synth").addEventListener("click", async () => {
   userTouched = true;
-  if (!files.img1) { setStatus("Escolha antes uma Imagem 1", { error: true }); return; }
+  if (!files[0]) { setStatus("Escolha antes uma Imagem 1", { error: true }); return; }
   const tx = Math.round(Number($("#synth-tx").value) || 0);
   const ty = Math.round(Number($("#synth-ty").value) || 0);
   const sigma = Math.max(0, Math.min(40, Number($("#synth-noise").value) || 0));
-  const bmp = await createImageBitmap(files.img1);
+  const bmp = await createImageBitmap(files[0]);
   const w = bmp.width - Math.abs(tx);
   const h = bmp.height - Math.abs(ty);
   if (w < 0.3 * bmp.width || h < 0.3 * bmp.height || w < 64 || h < 64) {
@@ -255,10 +331,10 @@ $("#btn-synth").addEventListener("click", async () => {
   const c1 = cropWithNoise(bmp, ox1, oy1, w, h, sigma);
   const c2 = cropWithNoise(bmp, ox1 + tx, oy1 + ty, w, h, sigma);
   const [f1, f2] = await Promise.all([canvasToFile(c1, "sintetica_1.png"), canvasToFile(c2, "sintetica_2.png")]);
-  setFile("img1", f1);
-  setFile("img2", f2);
-  groundTruth = { tx, ty };
   selectSample(null);
+  detail = 0;
+  setFiles([f1, f2]);
+  groundTruth = { tx, ty };
   setStatus(`Par fabricado com resposta t = ${fmtT([tx, ty], 0)} px${sigma ? `, ruído σ = ${sigma}` : ""}; agora gere o mosaico`);
 });
 
@@ -303,22 +379,27 @@ function currentOptions() {
     ratio: Number(form.ratio.value),
     ransac_threshold: Number(form.ransac_threshold.value),
     mutual: form.mutual.checked,
+    detalhe: detail,
   };
 }
 
 async function run({ scroll = true } = {}) {
-  if (!files.img1 || !files.img2 || !engine?.ready) return;
+  if (files.length < 2 || !engine?.ready) return;
   const options = currentOptions();
   runBtn.disabled = true;
-  setStatus("Detectando, casando, votando e mesclando", { busy: true });
+  setStatus(files.length > 2 ? `Alinhando ${files.length - 1} pares vizinhos e mesclando ${files.length} imagens`
+    : "Detectando, casando, votando e mesclando", { busy: true });
   try {
     while (objectUrls.length) URL.revokeObjectURL(objectUrls.pop());
-    const data = await engine.stitch(files.img1, files.img2, options);
+    const data = await engine.stitch(files, options);
     lastResult = data;
     render(data);
     markComparisonStale();
     maybeCompare();
-    setStatus(`t = ${fmtT(data.t)} px, ${data.n_inliers} inliers, ${fmt(data.timings_ms.total / 1000, 1)} s`);
+    const secs = fmt(data.timings_ms.total / 1000, 1);
+    setStatus(data.n_imagens > 2
+      ? `${data.n_imagens} imagens, mosaico ${data.mosaic_size[0]} × ${data.mosaic_size[1]} px, ${secs} s`
+      : `t = ${fmtT(data.t)} px, ${data.n_inliers} inliers, ${secs} s`);
     if (scroll) scrollToResult();
   } catch (err) {
     setStatus("Erro: " + err.message, { error: true });
@@ -339,26 +420,57 @@ function detectorName(id) {
 
 function render(res) {
   const im = res.images;
-  for (const k of ["mosaico", "justaposicao", "correspondencias", "pontos1", "pontos2", "escala", "pesos"]) {
+  for (const k of ["mosaico", "justaposicao", "contornos", "correspondencias", "pontos1", "pontos2", "escala", "pesos"]) {
     const el = $(`#img-${k}`);
     if (el && im[k]) el.src = im[k];
   }
 
+  const n = res.n_imagens || 2;
+  const a = detail + 1, b = detail + 2;   // números das imagens do par mostrado
+  $("#cap-mosaico").textContent = n > 2
+    ? `Panografia: cada imagem deslocada pela soma das translações desde a imagem 1 e mesclada às demais`
+    : "Panografia: a imagem 2 deslocada por t e mesclada à imagem 1";
+  $("#cap-contornos").textContent = n > 2
+    ? "Onde cada imagem caiu no mosaico, com o número dela na ordem de entrada"
+    : "Onde cada imagem caiu no mosaico: imagem 1 em claro, imagem 2 em cobalto";
+
   const facts = [];
+  if (n > 2) {
+    facts.push(`<div class="fact"><div class="k">Translações entre imagens vizinhas</div>
+      <table class="table num-table pairs">
+        <thead><tr><th>Par</th><th>t (px)</th><th>Inliers</th></tr></thead>
+        <tbody>${res.pares.map((p, k) => `<tr${k === detail ? ' class="sel"' : ""}><td>${k + 1}–${k + 2}</td>
+          <td>${fmtT(p.t, 1)}</td><td>${p.n_inliers} de ${p.n_matches}</td></tr>`).join("")}</tbody>
+      </table>
+      <div class="s">Cada linha é uma panografia de duas imagens, como no enunciado.</div></div>`);
+    facts.push(`<div class="fact"><div class="k">Posição de cada imagem no quadro da imagem 1</div>
+      <table class="table num-table pairs">
+        <tbody>${res.posicoes.map((q, k) => `<tr><td>imagem ${k + 1}</td><td>${fmtT(q, 1)}</td></tr>`).join("")}</tbody>
+      </table>
+      <div class="s">A soma das translações até ela: x₁ = xₖ + (t₁ + … + tₖ₋₁). Os erros de cada par também se somam.</div></div>`);
+    facts.push(`<label class="field detail-pick">Par mostrado nas seções 5 e 6
+      <select id="detail">${res.pares.map((p, k) => `<option value="${k}"${k === detail ? " selected" : ""}>imagens ${k + 1} e ${k + 2}</option>`).join("")}</select></label>`);
+  } else {
   facts.push(`<div class="fact"><div class="k">Translação t = (tx; ty)</div><div class="v">${fmtT(res.t)}</div>
     <div class="s">${res.scale < 1 ? `≈ ${fmtT(res.t_original, 1)} px na escala original` : "pixels; a imagem 2 vai para x₁ = x₂ + t"}</div></div>`);
   facts.push(`<div class="fact"><div class="k">Correspondências válidas (inliers)</div><div class="v">${res.n_inliers} <span style="color:var(--muted);font-size:18px">de ${res.n_matches}</span></div>
     <div class="s">${fmt(100 * res.inlier_ratio, 1)}% dos pares concordam com t</div></div>`);
-  if (groundTruth) {
+  }
+  if (groundTruth && n === 2) {
     const err = Math.hypot(res.t_original[0] - groundTruth.tx, res.t_original[1] - groundTruth.ty);
     facts.push(`<div class="fact truth${err > 1 ? " off" : ""}"><div class="k">Erro em relação à resposta conhecida</div><div class="v">${fmt(err, 2)} px</div>
       <div class="s">resposta: t = ${fmtT([groundTruth.tx, groundTruth.ty], 0)}</div></div>`);
   }
   const meta = [
-    ["erro RMS", `${fmt(res.rmse, 3)} px`],
-    ["detector", detectorName(res.params.detector)],
-    ["pontos", `${res.n_keypoints[0]} / ${res.n_keypoints[1]}`],
-    ["iterações", String(res.ransac_iterations)],
+    ...(n === 2 ? [
+      ["erro RMS", `${fmt(res.rmse, 3)} px`],
+      ["detector", detectorName(res.params.detector)],
+      ["pontos", `${res.n_keypoints[0]} / ${res.n_keypoints[1]}`],
+      ["iterações", String(res.ransac_iterations)],
+    ] : [
+      ["imagens", String(n)],
+      ["detector", detectorName(res.params.detector)],
+    ]),
     ["mosaico", `${res.mosaic_size[0]} × ${res.mosaic_size[1]}`],
     ["tempo", `${fmt(res.timings_ms.total / 1000, 2)} s`],
   ];
@@ -366,6 +478,14 @@ function render(res) {
   facts.push(`<a class="btn" href="${im.mosaico}" download="mosaico.jpg">Baixar mosaico.jpg</a>`);
   $("#facts").innerHTML = facts.join("");
   $("#resultados").hidden = false;
+  $("#detail")?.addEventListener("change", (e) => {
+    detail = Number(e.target.value);
+    run({ scroll: false });
+  });
+  // Nas seções 5 e 6, deixa claro de qual par vêm as figuras.
+  const pairTxt = n > 2 ? `Figuras do par formado pelas imagens ${a} e ${b} (escolha outro na §4).` : "";
+  $("#walk-pair").textContent = pairTxt;
+  $("#walk-pair").hidden = !pairTxt;
 
   renderWalk(res);
 }
@@ -373,8 +493,9 @@ function render(res) {
 function renderWalk(res) {
   const d = res.didatica || {};
   const det = detectorName(res.params.detector);
-  $("#here-pontos").innerHTML = `Nesta execução: <span class="num">${res.n_keypoints[0]}</span> pontos na imagem 1 e
-    <span class="num">${res.n_keypoints[1]}</span> na imagem 2, com o detector ${det}.`;
+  const k = (res.par_detalhe || 0) + 1;   // números reais das imagens do par mostrado
+  $("#here-pontos").innerHTML = `Nesta execução: <span class="num">${res.n_keypoints[0]}</span> pontos na imagem ${k} e
+    <span class="num">${res.n_keypoints[1]}</span> na imagem ${k + 1}, com o detector ${det}.`;
 
   if (d.nndr) {
     const n = d.nndr;
@@ -428,10 +549,12 @@ const median = (xs) => {
 };
 
 async function compare() {
-  if (!files.img1 || !files.img2 || !engine?.ready) return;
+  if (files.length < 2 || !engine?.ready) return;
   const gen = ++cmpGen;
   cmpStale = false;
-  const [f1, f2] = [files.img1, files.img2];
+  const k = Math.min(detail, files.length - 2);
+  const pair = [files[k], files[k + 1]];
+  $("#cmp-pair").textContent = files.length > 2 ? ` Par mostrado: imagens ${k + 1} e ${k + 2}.` : "";
   const base = currentOptions();
   const tbody = $("#cmp-table tbody");
   tbody.innerHTML = DETECTORS.map(([id, name]) =>
@@ -443,7 +566,7 @@ async function compare() {
     const row = $(`tr[data-det="${id}"]`, tbody);
     row.innerHTML = `<td>${name}</td><td class="pending" colspan="7">calculando</td>`;
     setCmpStatus(`Rodando ${name}`, true);
-    try { out[id] = await engine.stitch(f1, f2, { ...base, detector: id, figuras: "pontos1" }); }
+    try { out[id] = await engine.stitch(pair, { ...base, detector: id, figuras: "pontos1", detalhe: 0 }); }
     catch (err) { out[id] = { error: err.message }; }
     if (gen !== cmpGen) return;
     const r = out[id];

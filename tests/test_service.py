@@ -60,4 +60,6 @@ def test_samples_catalog_points_to_existing_files():
     import json
     samples = json.loads((ROOT / "web" / "samples" / "samples.json").read_text())
     for s in samples:
-        assert (ROOT / "web" / s["img1"]).is_file() and (ROOT / "web" / s["img2"]).is_file()
+        imgs = s.get("imgs") or [s["img1"], s["img2"]]   # sequência ou par
+        assert len(imgs) >= 2
+        assert all((ROOT / "web" / f).is_file() for f in imgs)
